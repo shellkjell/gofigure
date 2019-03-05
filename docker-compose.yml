@@ -1,0 +1,8 @@
+version: "2"
+
+services:
+  app:
+    image: golang:1.10
+    volumes:
+      - .:/go/src/go-with-compose
+    working_dir: /go/src/go-with-compose

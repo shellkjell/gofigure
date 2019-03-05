@@ -1,0 +1,19 @@
+kjnfdsvknjfdg
+
+#host: '10.10.10.10'
+
+image.host: '10.10.10.10'
+image.sizes.normal.width: 640
+image.sizes.normal.height: 480
+image.sizes.large: {
+    width: 1024
+    height: 780
+}
+
+[image.sizes.medium]
+width: 400
+height: 400
+
+[]
+#include "files/config.strings.txt"
+TEST

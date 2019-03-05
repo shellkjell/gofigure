@@ -1,7 +1,9 @@
-special_case_root_key: This key will not be in the same level as dev and production keys
+# Wut does this mean??
+# special_case_root_key: This key will not be in the same level as dev and production keys
 
 # Empty value
-empty_value:
+empty_value
 
-# Basic keys with the value " must be escaped
+# Espace any special characters
 quote_value: \"
+array_value: \[

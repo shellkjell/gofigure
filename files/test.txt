@@ -1,0 +1,37 @@
+###include "files/config.define_roots.txt"
+###include "files/config.define_sub_roots.txt"
+###include "files/config.strings.txt"
+
+value:"stringvalue"
+
+key.test:"stringvalue2"
+
+[test2]
+key: "test"
+
+#[@.test]
+# Simple key value config
+key: key.test
+#strKey: "Value\""
+
+# Multi-dim keys
+key2.primary: value
+key2.secondary: value
+
+# Multi-dim keys v2
+key3: {
+    primary: value
+    secondary: value
+}
+
+#value1: "testVal"
+#value2: test.test.value1
+
+# Array
+key4: [
+    key
+    key
+]
+
+[]
+##include "files/config.special.txt"

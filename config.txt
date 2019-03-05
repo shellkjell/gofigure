@@ -1,9 +1,11 @@
+# Comment
+; Another comment
+
 # Simple key value config
-key: value
+key: value # Comment
 
 # Multi-dim keys
-key2.primary: value
-key2.secondary: value
+key2.subkey: value
 
 # Multi-dim keys v2
 key3: {
@@ -11,13 +13,35 @@ key3: {
     secondary: value
 }
 
+# Multi-dim keys v3
+key4: {
+    primary: value
+    secondary: {
+        third: value
+        forth: value
+    }
+}
+
 # Array
-key4: [
+key5: [
     value1
     value2
 ]
 
-#include config.define_roots.txt
-#include config.define_sub_roots.txt
-#include config.strings.txt
-#include config.special.txt
+# Array with complext values
+key6: [
+    value1
+    value2
+    {
+        key1: test
+        key2: test2
+        key3: [test3 test4]
+    }
+    [
+        value3 
+    ]
+]
+
+[@]
+
+key1: {}

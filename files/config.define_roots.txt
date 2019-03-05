@@ -1,10 +1,12 @@
 # Define config roots (Roots are kept defined from the moment defined until all files have been parsed, they are not
 # just for current file and its sub files, but for all global includes after these have been defined
 # To make things clear, define roots as early as possible
-[%{dev,production}]
+# [@.%{dev,production}]
 
-# Create config under all predefined roots in current level
+# Create config under all predefined roots in current level [@]
 [@]
+
+[test]
 locale: en_US
 thumbnails: {
     large: {
@@ -23,6 +25,9 @@ locale: se_SV
 # Overwrites of specific keys for the dev root
 [dev]
 locale: en_UK
+
+[@.%{dev,production}.anotherRoot.more]
+thisWorks: ""
 
 # More specified overwrite
 [dev.thumbnails.small]
