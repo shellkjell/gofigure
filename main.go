@@ -35,17 +35,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	config := ParseFile(inFile, nil)
+	mapped := ParseFile(inFile, nil).Transform()
 
-	config = config.splitAndAssociateChildren()
-
-	mapped, err := json.Marshal(config.toMap())
+	marshaled, err := json.Marshal(mapped)
 
 	check(err)
 
 	if outFile == "" {
-		fmt.Println(string(mapped))
+		fmt.Println(string(marshaled))
 	} else {
-		ioutil.WriteFile(outFile, mapped, 0644)
+		ioutil.WriteFile(outFile, marshaled, 0644)
 	}
 }

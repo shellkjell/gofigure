@@ -218,6 +218,12 @@ func mergeMapsOfInterface(dst, src map[string]interface{}) {
 	}
 }
 
+// Transform - Takes a freshly parsed config file and transforms it to a map
+func (c *CONFIG) Transform() map[string]interface{} {
+	c = c.splitAndAssociateChildren()
+	return c.toMap()
+}
+
 var globalRoot map[string]interface{}
 
 func (c *CONFIG) toMap() (ret map[string]interface{}) {
