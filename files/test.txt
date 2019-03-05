@@ -1,6 +1,6 @@
-###include "files/config.define_roots.txt"
-###include "files/config.define_sub_roots.txt"
-###include "files/config.strings.txt"
+#include "files/config.define_roots.txt"
+#include "files/config.define_sub_roots.txt"
+#include "files/config.strings.txt"
 
 value:"stringvalue"
 

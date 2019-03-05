@@ -24,23 +24,54 @@ func TestJsonMarshalCases(t *testing.T) {
 			data:     `[test] key:"value" [@.key] key:"value"`,
 			expected: `{"test":{"key":{"key":"value"}}}`,
 		},
+
+		ActualExpected{
+			data:     `[root1 root2] key:"value" [@.%{dev,prod,qa}] key:"value"`,
+			expected: `{"root1":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}},"root2":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}}}`,
+		},
+
+		/* 	== config.special.txt ==
+		# Wut does this mean??
+		# special_case_root_key: This key will not be in the same level as dev and production keys
+
+		# Empty value
+		empty_value
+
+		# Espace any special characters
+		quote_value: \"
+		array_value: \[
+		*/
+		// Maybe do something to ensure determinism here
+		ActualExpected{
+			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" #include "files/config.special.txt"`,
+			expected: `{"Rick_Astley":"Never","\\\"":"gonna","\\[":"give","quote_value":"gonna","array_value":"give"}`,
+		},
 	}
 
 	for _, testCase := range testCases {
 		config := &CONFIG{}
+
 		parser.ParseString(testCase.data, config)
-		config = config.splitAndAssociateChildren()
-		mappedConfig := config.toMap()
+
+		mappedConfig := config.Transform()
+
 		marshaled, _ := json.Marshal(mappedConfig)
 
 		actual := map[string]interface{}{}
 		expected := map[string]interface{}{}
 
-		_ = json.Unmarshal(marshaled, actual)
-		_ = json.Unmarshal([]byte(testCase.expected), expected)
+		err := json.Unmarshal(marshaled, &actual)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+
+		err = json.Unmarshal([]byte(testCase.expected), &expected)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
 
 		if !reflect.DeepEqual(actual, expected) {
-			t.Errorf("Got: %s\nExpected: %s", string(marshaled), testCase.expected)
+			t.Errorf("\nGot: %s\nExpected: %s", string(marshaled), testCase.expected)
 		}
 	}
 }

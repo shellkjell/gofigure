@@ -55,7 +55,6 @@ func concatenateExpansionMacroIdentifiers(identifiers *[]string) {
 	}
 }
 
-// This function is needed due to our parser's strictness in splitting identifiers
 func explodeExpansionMacroIdentifiers(identifiers *[]string) {
 	/*
 	  Expand the section names of all identifiers within a section. e.g. [root.%{dev,prod} root2.%{dev,prod}]
@@ -126,7 +125,7 @@ func isValidFinalValue(val interface{}) bool {
 		case *int64:
 		case *float64:
 		case map[string]interface{}:
-			break // "missing return at the end of function"
+			break
 		default:
 			return false
 		}
@@ -195,29 +194,31 @@ func mergeMapsOfInterface(dst, src map[string]interface{}) {
 					// Nothing?
 				}
 			}
-		} else {
-			if _, exists := dst[key]; !exists {
-				dst[key] = val
-				continue
-			}
 
-			switch src[key].(type) {
+			continue
+		}
+
+		if _, exists := dst[key]; !exists {
+			dst[key] = val
+			continue
+		}
+
+		switch src[key].(type) {
+		case map[string]interface{}:
+			switch dst[key].(type) {
 			case map[string]interface{}:
-				switch dst[key].(type) {
-				case map[string]interface{}:
-					mergeMapsOfInterface(dst[key].(map[string]interface{}), src[key].(map[string]interface{}))
-
-					break
-
-				default:
-					dst[key] = val
-				}
+				mergeMapsOfInterface(dst[key].(map[string]interface{}), src[key].(map[string]interface{}))
 
 				break
 
 			default:
 				dst[key] = val
 			}
+
+			break
+
+		default:
+			dst[key] = val
 		}
 	}
 }
