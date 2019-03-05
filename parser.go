@@ -74,9 +74,9 @@ type Value struct {
 	Pos lexer.Position
 }
 
-func checkFileError(err error, filename string) {
+func checkFileError(err error) {
 	if err != nil {
-		panic(strings.Replace(err.Error(), "<source>", filename, -1))
+		panic(strings.Replace(err.Error(), "<source>", currentParserFile, -1))
 	}
 }
 
@@ -92,8 +92,11 @@ func BuildParser() (parser *participle.Parser) {
 	return
 }
 
+var currentParserFile = ""
+
 func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 	config = &CONFIG{}
+	currentParserFile = filename
 
 	if parser == nil {
 		parser = BuildParser()
@@ -106,7 +109,8 @@ func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 
 	// Parse the config
 	err = parser.ParseString(dataString, config)
-	checkFileError(err, filename)
+	checkFileError(err)
 
+	currentParserFile = ""
 	return
 }

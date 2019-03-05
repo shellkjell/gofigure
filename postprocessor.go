@@ -106,7 +106,7 @@ func lookupIdentifierInRoot(multiKeyName *string, root map[string]interface{}) (
 	currRoot = root
 	for _, keyName := range keyNames {
 		if _, exists := currRoot.(map[string]interface{})[keyName]; !exists {
-			return nil, errors.New("No key with the name \"" + keyName + "\" exists. Query: \"" + *multiKeyName + "\".")
+			return nil, errors.New("No key with the name \"" + keyName + "\" exists from query: \"" + *multiKeyName + "\"")
 		}
 
 		currRoot = currRoot.(map[string]interface{})[keyName]
@@ -133,7 +133,7 @@ func isValidFinalValue(val interface{}) bool {
 
 func checkConfigError(err error, v *Value) {
 	if err != nil {
-		panic(err.Error() + "\n\t" + v.Pos.Filename + ":" + strconv.FormatInt(int64(v.Pos.Line), 10) + ":" + strconv.FormatInt(int64(v.Pos.Column), 10))
+		panic(err.Error() + " in " + v.Pos.Filename + ":" + strconv.FormatInt(int64(v.Pos.Line), 10) + ":" + strconv.FormatInt(int64(v.Pos.Column), 10))
 	}
 }
 
