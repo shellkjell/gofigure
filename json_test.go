@@ -24,23 +24,38 @@ func TestJsonMarshalCases(t *testing.T) {
 			data:     `[test] key:"value" [@.key] key:"value"`,
 			expected: `{"test":{"key":{"key":"value"}}}`,
 		},
+
+		ActualExpected{
+			data:     `[root1 root2] key:"value" [@.%{dev,prod,qa}] key:"value"`,
+			expected: `{"root1":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}},"root2":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}}}`,
+		},
 	}
 
 	for _, testCase := range testCases {
 		config := &CONFIG{}
+
 		parser.ParseString(testCase.data, config)
+
 		config = config.splitAndAssociateChildren()
 		mappedConfig := config.toMap()
+
 		marshaled, _ := json.Marshal(mappedConfig)
 
 		actual := map[string]interface{}{}
 		expected := map[string]interface{}{}
 
-		_ = json.Unmarshal(marshaled, actual)
-		_ = json.Unmarshal([]byte(testCase.expected), expected)
+		err := json.Unmarshal(marshaled, &actual)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+
+		err = json.Unmarshal([]byte(testCase.expected), &expected)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
 
 		if !reflect.DeepEqual(actual, expected) {
-			t.Errorf("Got: %s\nExpected: %s", string(marshaled), testCase.expected)
+			t.Errorf("\nGot: %s\nExpected: %s", string(marshaled), testCase.expected)
 		}
 	}
 }
