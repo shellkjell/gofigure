@@ -4,12 +4,6 @@ localhost:"10.10.10.10"
 root: "root"
 
 # Defining possible sub roots for database
-# [@.database.@{master slave}]
-
-# Need to separate expand roots macro with comma
-# Maybe we could do it without but putting a space in as an identifier 
-# would mean that we have to define exactly where space is acceptable in 
-# every rule our grammar has I think
 [@.database.%{master,slave}]
 
 # Define host/username/password for master/slave
