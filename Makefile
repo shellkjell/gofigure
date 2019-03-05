@@ -1,11 +1,13 @@
 build:
-	docker run --rm -v $$PWD:/app -w /app -e GOPATH=/app/gopath golang:1.10 go get -d ./...
+	docker run --rm -v $$PWD:/app -w /app -e GOPATH=/app/gopath golang:1.10 go get -d ./... && go build
 
+build-local:
+	go get -d ./... && go build
 
 run:
-	docker run --rm -v $$PWD:/app -w /app -e GOPATH=/app/gopath golang:1.10 go run main.go postprocessor.go parser.go
+	docker run --rm -v $$PWD:/app -w /app -e GOPATH=/app/gopath golang:1.10 ./gofigure config.txt
 
 run-local:
-	go run main.go postprocessor.go parser.go
+	./gofigure config.txt
 
 .PHONY: run run-local build
