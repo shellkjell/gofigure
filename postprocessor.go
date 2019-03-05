@@ -7,8 +7,7 @@ import (
 	"strings"
 )
 
-// This function is needed due to our parser's strictness in splitting identifiers
-func expandExpansionMacros(identifiers *[]string) {
+func concatenateExpansionMacroIdentifiers(identifiers *[]string) {
 	// Concatenate all expansion macros
 	for i := 0; i < len(*identifiers); i++ {
 		replacement := ""
@@ -54,13 +53,18 @@ func expandExpansionMacros(identifiers *[]string) {
 
 		(*identifiers) = newIdentifiers
 	}
+}
 
+// This function is needed due to our parser's strictness in splitting identifiers
+func explodeExpansionMacroIdentifiers(identifiers *[]string) {
+	/*
+	  Expand the section names of all identifiers within a section. e.g. [root.%{dev,prod} root2.%{dev,prod}]
+	  This will then look like [root.dev root.prod root2.dev root2.prod]
+	*/
 	expandedIdentifiers := []string{}
-	// Then expand the section names of all identifiers within a section. e.g. [root.%{dev,prod} root2.%{dev,prod}]
-	// This will then look like [root.dev root.prod root2.dev root2.prod]
+
 	for _, dottedIdentifier := range *identifiers {
 		identifierParts := splitIdentifiers(dottedIdentifier)
-		// newIdentifiers := []string{}
 		indices := []int{}
 
 		// Look at all identifier parts individually, e.g. [root.root2] where both root and root2 is a part each
@@ -403,7 +407,8 @@ func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
 			section := ret.Entries[index].Section
 
 			// Expand root names
-			expandExpansionMacros(&section.Identifier)
+			concatenateExpansionMacroIdentifiers(&section.Identifier)
+			explodeExpansionMacroIdentifiers(&section.Identifier)
 
 			fieldList := section.Fields
 
