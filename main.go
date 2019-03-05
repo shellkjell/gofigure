@@ -2,10 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-
-	"github.com/alecthomas/repr"
+	"io/ioutil"
+	"log"
+	"os"
 )
+
+var stderr = log.New(os.Stderr, "", 0)
 
 func check(e error) {
 	if e != nil {
@@ -13,17 +17,33 @@ func check(e error) {
 	}
 }
 
+var outFile string
+var inFile string
+
+func init() {
+	flag.StringVar(&outFile, "o", "", "Output filename")
+	flag.StringVar(&inFile, "i", "", "Input filename")
+}
+
 func main() {
-	// parseFiles := os.Args
-	config := ParseFile("files/zakay.txt", nil)
+	flag.Parse()
 
-	config = config.splitAndAssociateChildren()
+	if inFile == "" || len(os.Args) < 2 {
+		stderr.Println("Need a file to parse as argument")
+		fmt.Println("usage: " + os.Args[0] + " -i inFile [-o outFile]")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 
-	repr.Println(config, repr.Indent("  "), repr.OmitEmpty(true))
+	mapped := ParseFile(inFile, nil).Transform()
 
-	mapped, err := json.Marshal(config.toMap())
+	marshaled, err := json.Marshal(mapped)
 
 	check(err)
 
-	fmt.Println(string(mapped))
+	if outFile == "" {
+		fmt.Println(string(marshaled))
+	} else {
+		ioutil.WriteFile(outFile, marshaled, 0644)
+	}
 }

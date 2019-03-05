@@ -7,8 +7,7 @@ import (
 	"strings"
 )
 
-// This function is needed due to our parser's strictness in splitting identifiers
-func expandExpansionMacros(identifiers *[]string) {
+func concatenateExpansionMacroIdentifiers(identifiers *[]string) {
 	// Concatenate all expansion macros
 	for i := 0; i < len(*identifiers); i++ {
 		replacement := ""
@@ -54,13 +53,18 @@ func expandExpansionMacros(identifiers *[]string) {
 
 		(*identifiers) = newIdentifiers
 	}
+}
 
+// This function is needed due to our parser's strictness in splitting identifiers
+func explodeExpansionMacroIdentifiers(identifiers *[]string) {
+	/*
+	  Expand the section names of all identifiers within a section. e.g. [root.%{dev,prod} root2.%{dev,prod}]
+	  This will then look like [root.dev root.prod root2.dev root2.prod]
+	*/
 	expandedIdentifiers := []string{}
-	// Then expand the section names of all identifiers within a section. e.g. [root.%{dev,prod} root2.%{dev,prod}]
-	// This will then look like [root.dev root.prod root2.dev root2.prod]
+
 	for _, dottedIdentifier := range *identifiers {
 		identifierParts := splitIdentifiers(dottedIdentifier)
-		// newIdentifiers := []string{}
 		indices := []int{}
 
 		// Look at all identifier parts individually, e.g. [root.root2] where both root and root2 is a part each
@@ -106,7 +110,7 @@ func lookupIdentifierInRoot(multiKeyName *string, root map[string]interface{}) (
 	currRoot = root
 	for _, keyName := range keyNames {
 		if _, exists := currRoot.(map[string]interface{})[keyName]; !exists {
-			return nil, errors.New("No key with the name \"" + keyName + "\" exists. Query: \"" + *multiKeyName + "\".")
+			return nil, errors.New("No key with the name \"" + keyName + "\" exists from query: \"" + *multiKeyName + "\"")
 		}
 
 		currRoot = currRoot.(map[string]interface{})[keyName]
@@ -133,7 +137,7 @@ func isValidFinalValue(val interface{}) bool {
 
 func checkConfigError(err error, v *Value) {
 	if err != nil {
-		panic(err.Error() + "\n\t" + v.Pos.Filename + ":" + strconv.FormatInt(int64(v.Pos.Line), 10) + ":" + strconv.FormatInt(int64(v.Pos.Column), 10))
+		panic(err.Error() + " in " + v.Pos.Filename + ":" + strconv.FormatInt(int64(v.Pos.Line), 10) + ":" + strconv.FormatInt(int64(v.Pos.Column), 10))
 	}
 }
 
@@ -216,6 +220,12 @@ func mergeMapsOfInterface(dst, src map[string]interface{}) {
 			}
 		}
 	}
+}
+
+// Transform - Takes a freshly parsed config file and transforms it to a map
+func (c *CONFIG) Transform() map[string]interface{} {
+	c = c.splitAndAssociateChildren()
+	return c.toMap()
 }
 
 var globalRoot map[string]interface{}
@@ -397,7 +407,8 @@ func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
 			section := ret.Entries[index].Section
 
 			// Expand root names
-			expandExpansionMacros(&section.Identifier)
+			concatenateExpansionMacroIdentifiers(&section.Identifier)
+			explodeExpansionMacroIdentifiers(&section.Identifier)
 
 			fieldList := section.Fields
 
