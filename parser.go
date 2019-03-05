@@ -69,7 +69,8 @@ type Value struct {
 	Identifier      *string            `| @Ident `
 	List            []*Value           `| "[" ((@@)*)? "]"`
 	Map             []*Field           `| "{" ((@@)*)? "}"`
-	Reassigns       bool
+
+	Reassigns bool
 
 	Pos lexer.Position
 }
@@ -94,7 +95,6 @@ func BuildParser() (parser *participle.Parser) {
 
 func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 	config = &CONFIG{}
-
 	if parser == nil {
 		parser = BuildParser()
 	}
