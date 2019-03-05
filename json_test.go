@@ -6,24 +6,6 @@ import (
 	"testing"
 )
 
-func TestJsonMarshalOfStructure(t *testing.T) {
-	parser := BuildParser()
-	config := &CONFIG{}
-
-	parser.ParseString(`key:"value"`, config)
-
-	config = config.splitAndAssociateChildren()
-
-	mappedConfig := config.toMap()
-
-	actual, _ := json.Marshal(mappedConfig)
-	expected := []byte(`{"key":"value"}`)
-
-	if !reflect.DeepEqual(actual, expected) { // Yes this compares array elements
-		t.Errorf("Got: %s\tExpected: %s", string(actual), string(expected))
-	}
-}
-
 type ActualExpected struct {
 	data     string
 	expected string
