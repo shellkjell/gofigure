@@ -1,0 +1,34 @@
+# Define config roots (Roots are kept defined from the moment defined until all files have been parsed, they are not
+# just for current file and its sub files, but for all global includes after these have been defined
+# To make things clear, define roots as early as possible
+[%{dev,production}]
+
+# Create config under all predefined roots in current level
+[@]
+locale: en_US
+thumbnails: {
+    large: {
+        width: 640
+        height: 480
+    }
+    small: {
+        width: 80
+        height: 60
+    }
+}
+
+[dev]
+locale: se_SV
+
+# Overwrites of specific keys for the dev root
+[dev]
+locale: en_UK
+
+# More specified overwrite
+[dev.thumbnails.small]
+width: 40
+height: 30
+
+
+[dev prod]
+host: localhost
