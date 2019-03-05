@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-type ActualExpected struct {
+type MarshalJSONTestCase struct {
 	data     string
 	expected string
 }
@@ -14,18 +14,18 @@ type ActualExpected struct {
 func TestJsonMarshalCases(t *testing.T) {
 	parser := BuildParser()
 
-	testCases := []ActualExpected{
-		ActualExpected{
+	testCases := []MarshalJSONTestCase{
+		MarshalJSONTestCase{
 			data:     `[test.%{dev,prod}]` + "\n" + `key:"value"`,
 			expected: `{"test":{"dev":{"key":"value"},"prod":{"key":"value"}}}`,
 		},
 
-		ActualExpected{
+		MarshalJSONTestCase{
 			data:     `[test] key:"value" [@.key] key:"value"`,
 			expected: `{"test":{"key":{"key":"value"}}}`,
 		},
 
-		ActualExpected{
+		MarshalJSONTestCase{
 			data:     `[root1 root2] key:"value" [@.%{dev,prod,qa}] key:"value"`,
 			expected: `{"root1":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}},"root2":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}}}`,
 		},
@@ -42,7 +42,7 @@ func TestJsonMarshalCases(t *testing.T) {
 		array_value: \[
 		*/
 		// Maybe do something to ensure determinism here
-		ActualExpected{
+		MarshalJSONTestCase{
 			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" #include "files/config.special.txt"`,
 			expected: `{"Rick_Astley":"Never","\\\"":"gonna","\\[":"give","quote_value":"gonna","array_value":"give"}`,
 		},
