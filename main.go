@@ -17,25 +17,25 @@ func check(e error) {
 	}
 }
 
-var outFile = flag.String("-output-file", "", "Output filename")
-var inFile = flag.String("-input-file", "", "Input filename")
+var outFile string
+var inFile string
 
 func init() {
-	flag.StringVar(outFile, "o", "", "Output filename")
-	flag.StringVar(inFile, "i", "", "Input filename")
+	flag.StringVar(&outFile, "o", "", "Output filename")
+	flag.StringVar(&inFile, "i", "", "Input filename")
 }
 
 func main() {
 	flag.Parse()
 
-	if *inFile == "" || len(os.Args) < 2 {
+	if inFile == "" || len(os.Args) < 2 {
 		stderr.Println("Need a file to parse as argument")
 		fmt.Println("usage: " + os.Args[0] + " -i inFile [-o outFile]")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	config := ParseFile(*inFile, nil)
+	config := ParseFile(inFile, nil)
 
 	config = config.splitAndAssociateChildren()
 
@@ -43,9 +43,9 @@ func main() {
 
 	check(err)
 
-	if *outFile == "" {
+	if outFile == "" {
 		fmt.Println(string(mapped))
 	} else {
-		ioutil.WriteFile(*outFile, mapped, 0644)
+		ioutil.WriteFile(outFile, mapped, 0644)
 	}
 }
