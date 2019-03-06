@@ -34,12 +34,10 @@ func concatenateExpansionMacrosWithParentsAndChildren(identifiers *[]string) {
 
 		if hasChild && !isLast { // append next string element aswell
 			newIdentifiers[nwIdentsIndex] = newIdentifiers[nwIdentsIndex] + newIdentifiers[nwIdentsIndex+1]
-			newIdentifiers = append(newIdentifiers[:nwIdentsIndex], newIdentifiers[nwIdentsIndex+1:]...)
-			nwIdentsIndex-- // this is okay even tho we really removed element above, cuz we're not using this index again
+			newIdentifiers = append(newIdentifiers[:nwIdentsIndex+1], newIdentifiers[nwIdentsIndex+2:]...)
 		}
 
-		i += nwIdentsIndex - i
-
+		i--
 		(*identifiers) = newIdentifiers
 	}
 }
@@ -64,10 +62,16 @@ func explodeExpansionMacroIdentifiers(identifiers *[]string) {
 
 		if len(indices) != 0 {
 			for _, index := range indices {
+				// Any string with more expansion macros than one is going to be processed again by this function.
+				// Every other finished string is in stringsFinished
+				var stringsToBeProcessedAgain, stringsFinished []string
+
 				splitRootNames := splitExpansionMacro(identifierParts[index])
 
 				for _, nwRootName := range splitRootNames {
 					identStr := ""
+					shouldProcessAgain := false
+
 					for i, identifierPart := range identifierParts {
 						if i == index {
 							identStr += nwRootName
@@ -75,13 +79,26 @@ func explodeExpansionMacroIdentifiers(identifiers *[]string) {
 							identStr += identifierPart
 						}
 
+						if !shouldProcessAgain && isValidExpansionMacro(identifierPart) {
+							shouldProcessAgain = true
+						}
+
 						if i != len(identifierParts)-1 {
 							identStr += "."
 						}
 					}
 
-					expandedIdentifiers = append(expandedIdentifiers, identStr)
+					if shouldProcessAgain {
+						stringsToBeProcessedAgain = append(stringsToBeProcessedAgain, identStr)
+					} else {
+						stringsFinished = append(stringsFinished, identStr)
+					}
 				}
+
+				explodeExpansionMacroIdentifiers(&stringsToBeProcessedAgain)
+
+				expandedIdentifiers = append(expandedIdentifiers, stringsToBeProcessedAgain...)
+				expandedIdentifiers = append(expandedIdentifiers, stringsFinished...)
 			}
 		} else {
 			expandedIdentifiers = append(expandedIdentifiers, dottedIdentifier)
