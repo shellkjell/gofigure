@@ -71,7 +71,7 @@ func TestJsonMarshalCases(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(actual, expected) {
-			t.Errorf("\nGot: %s\nExpected: %s", string(marshaled), testCase.expected)
+			t.Errorf("\nGot: %s\nExpected: %s\nFrom:%s", string(marshaled), testCase.expected, testCase.data)
 		}
 	}
 }
