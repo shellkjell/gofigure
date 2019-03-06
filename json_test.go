@@ -30,6 +30,11 @@ func TestJsonMarshalCases(t *testing.T) {
 			expected: `{"root1":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}},"root2":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}}}`,
 		},
 
+		MarshalJSONTestCase{
+			data:     `[root] key:"value" [@.%{dev,prod}.test.%{sub1,sub2}] key:"value"`,
+			expected: `{"root":{"key":"value","dev":{"test":{"sub1":{"key":"value"},"sub2":{"key":"value"}}},"prod":{"test":{"sub1":{"key":"value"},"sub2":{"key":"value"}}}}}`,
+		},
+
 		/* 	== config.special.txt ==
 		# Wut does this mean??
 		# special_case_root_key: This key will not be in the same level as dev and production keys
