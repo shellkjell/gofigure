@@ -7,7 +7,7 @@
 [@]
 
 [test]
-locale: en_US
+locale: "en_US"
 thumbnails: {
     large: {
         width: 640
@@ -20,20 +20,20 @@ thumbnails: {
 }
 
 [dev]
-locale: se_SV
+locale: "se_SV"
 
 # Overwrites of specific keys for the dev root
 [dev]
-locale: en_UK
+locale: "en_UK"
 
-[@.%{dev,production}.anotherRoot.more]
+[tests.%{dev,production}.anotherRoot.more.%{test,this}.aswell]
 thisWorks: ""
 
 # More specified overwrite
-[dev.thumbnails.small]
+[@.thumbnails.small]
 width: 40
 height: 30
 
 
 [dev prod]
-host: localhost
+host: "localhost"
