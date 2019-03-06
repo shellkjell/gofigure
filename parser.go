@@ -16,7 +16,8 @@ var PutinLexer = lexer.Must(lexer.Regexp(
 		`|([#;].*$)` +
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
-		`|(?P<Ident>(\\.|(@|[[:alpha:]_][[:alpha:]\d_]+)(\.(@|[[:alpha:]\d_]+))*\.?))` +
+		`|(?P<Ident>(\\.|(@|[[:alpha:]_][[:alpha:]\d_]+)(\.(@|[[:alpha:]\d_]+))*))` +
+		`|(?P<ExpansionMacro>\.?%{([[:alpha:]_][[:alpha:]\d_]+,?)+}\.?)` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
 		`|(?P<Punct>[][{},. :%])` +
@@ -45,7 +46,7 @@ type Include struct {
 }
 
 type Section struct {
-	Identifier []string `"[" (@(Ident " ")+ | (@(Ident? ("%" "{" (","? Ident)* "}")? "."? Ident? ("%" "{" (","? Ident)* "}")?)!)* ) "]"`
+	Identifier []string `"[" (@(Ident " ")+ | ((@Ident? @ExpansionMacro?)!)* ) "]"`
 	Fields     []*Field ` (@@)* ("[]"|FileEnd)?`
 
 	Pos lexer.Position
@@ -113,7 +114,7 @@ func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 }
 
 func isValidExpansionMacro(str string) bool {
-	re := regexp.MustCompile("^%{[\\w_]+(,[\\w_]+)*?}$") // Permissive
+	re := regexp.MustCompile("^.?%{[\\w_]+(,[\\w_]+)*?}.?$") // Permissive
 	indices := re.FindAllStringIndex(str, -1)
 
 	if indices != nil && indices[0][0] == 0 && indices[0][1] == len(str) {

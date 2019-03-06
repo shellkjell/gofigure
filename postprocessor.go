@@ -6,49 +6,39 @@ import (
 	"strconv"
 )
 
-func concatenateExpansionMacroIdentifiers(identifiers *[]string) {
+func concatenateExpansionMacrosWithParentsAndChildren(identifiers *[]string) {
 	// Concatenate all expansion macros
 	for i := 0; i < len(*identifiers); i++ {
-		replacement := ""
-
-		if (*identifiers)[i] != "%" { // Not start of expansion macro
+		if len((*identifiers)[i]) < 4 {
 			continue
 		}
 
-		// Build new identifier string
-		replacement += "%"
-		start := i
-		for j := i + 1; j < len(*identifiers); j++ {
-			replacement += (*identifiers)[j]
-			if (*identifiers)[j] == "}" {
-				i += j
-				break
-			}
+		identifier := (*identifiers)[i]
+
+		if !isValidExpansionMacro(identifier) {
+			continue
 		}
 
-		// Create a new array of identifiers to replace macros
-		var newIdentifiers []string
-		if start > 0 {
-			startIdent := (*identifiers)[start-1]
-			if startIdent[len(startIdent)-1] == '.' { // Expansion macro is below last entry (not at root level)
-				newIdentifiers = (*identifiers)[:start-1]
-				replacement = (*identifiers)[start-1] + replacement
-			} else { // Macro is at root level
-				newIdentifiers = (*identifiers)[:start]
-			}
+		hasParent := identifier[0] == '.'
+		hasChild := identifier[len(identifier)-1] == '.'
+		isLast := i == len(*identifiers)-1
+
+		newIdentifiers := (*identifiers)[:]
+
+		nwIdentsIndex := i
+		if hasParent && i != 0 {
+			newIdentifiers[i-1] = newIdentifiers[i-1] + newIdentifiers[i]
+			newIdentifiers = append(newIdentifiers[:i], newIdentifiers[i+1:]...)
+			nwIdentsIndex--
 		}
 
-		if len(newIdentifiers) > 0 {
-			newIdentifiers[len(newIdentifiers)-1] += replacement
-			newIdentifiers = append(newIdentifiers, (*identifiers)[i:]...)
-		} else {
-			newIdentifiers = []string{replacement}
-			if i < len(*identifiers) && (*identifiers)[i][0] == '.' {
-				// If the first value of the next identifier is a dot, it's always the start of another identifier.
-				newIdentifiers[len(newIdentifiers)-1] += (*identifiers)[i]
-				newIdentifiers[len(newIdentifiers)-1] += (*identifiers)[i+1]
-			}
+		if hasChild && !isLast { // append next string element aswell
+			newIdentifiers[nwIdentsIndex] = newIdentifiers[nwIdentsIndex] + newIdentifiers[nwIdentsIndex+1]
+			newIdentifiers = append(newIdentifiers[:nwIdentsIndex], newIdentifiers[nwIdentsIndex+1:]...)
+			nwIdentsIndex-- // this is okay even tho we really removed element above, cuz we're not using this index again
 		}
+
+		i += nwIdentsIndex - i
 
 		(*identifiers) = newIdentifiers
 	}
@@ -407,7 +397,7 @@ func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
 			section := ret.Entries[index].Section
 
 			// Expand root names
-			concatenateExpansionMacroIdentifiers(&section.Identifier)
+			concatenateExpansionMacrosWithParentsAndChildren(&section.Identifier)
 			explodeExpansionMacroIdentifiers(&section.Identifier)
 
 			fieldList := section.Fields
