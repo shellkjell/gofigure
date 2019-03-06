@@ -4,7 +4,6 @@ import (
 	"errors"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 func concatenateExpansionMacroIdentifiers(identifiers *[]string) {
@@ -455,7 +454,6 @@ func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
 	}
 
 	// At this point, only Entries with a Field should exist
-
 	if len(ret.Entries) == 0 {
 		ret.Entries = nil
 	}
@@ -463,18 +461,7 @@ func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
 	return
 }
 
-func isValidExpansionMacro(str string) bool {
-	re := regexp.MustCompile("^%{[\\w_]+(,[\\w_]+)*?}$") // Permissive
-	indices := re.FindAllStringIndex(str, -1)
-
-	if indices != nil && indices[0][0] == 0 && indices[0][1] == len(str) {
-		// "%" is the first and last value, and they contain stuff
-		return true
-	}
-
-	return false
-}
-
+// This function removes leading/trailing whitespaces, string quotes etc.
 func (thisArg *UnprocessedString) transform() (final string) {
 	re_leadclose_whtsp := regexp.MustCompile(`^[\s\p{Zs}]+|[\s\p{Zs}]+$`)
 	re_leadclose_quotes := regexp.MustCompile(`^("""|''')|("""|''')$`)
@@ -489,16 +476,4 @@ func (thisArg *UnprocessedString) transform() (final string) {
 	final = re_newline_whtsp.ReplaceAllString(final, `\\n`)
 
 	return
-}
-
-func splitIdentifiers(identStr string) (idents []string) {
-	if len(identStr) > 0 && identStr[:1][0] == '.' { // Remove leading dot
-		identStr = identStr[1:]
-	}
-
-	return strings.Split(identStr, ".")
-}
-
-func splitExpansionMacro(macroStr string) []string {
-	return strings.Split(macroStr[2:len(macroStr)-1], ",") // Remove leading "%{" and trailing "}" and then split string at comma
 }

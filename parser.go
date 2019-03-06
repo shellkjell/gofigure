@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"regexp"
 	"strings"
 
 	"github.com/alecthomas/participle"
@@ -109,4 +110,28 @@ func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 	checkFileError(err, filename)
 
 	return
+}
+
+func isValidExpansionMacro(str string) bool {
+	re := regexp.MustCompile("^%{[\\w_]+(,[\\w_]+)*?}$") // Permissive
+	indices := re.FindAllStringIndex(str, -1)
+
+	if indices != nil && indices[0][0] == 0 && indices[0][1] == len(str) {
+		// "%" is the first and last value, and they contain stuff
+		return true
+	}
+
+	return false
+}
+
+func splitIdentifiers(identStr string) (idents []string) {
+	if len(identStr) > 0 && identStr[:1][0] == '.' { // Remove leading dot
+		identStr = identStr[1:]
+	}
+
+	return strings.Split(identStr, ".")
+}
+
+func splitExpansionMacro(macroStr string) []string {
+	return strings.Split(macroStr[2:len(macroStr)-1], ",") // Remove leading "%{" and trailing "}" and then split string at comma
 }

@@ -26,4 +26,4 @@ slave.host: "10.0.10.2"
 # Overwrite password for all databases in production
 [production.database.@]
 password: 12345 # integer
-float: 1.5 # floaty
+float: 1.5 

@@ -1,6 +1,8 @@
 # Comment
 ; Another comment
 
+value: "Valuable"
+
 # Simple key value config
 key: value # Comment
 
@@ -18,27 +20,27 @@ key4: {
     primary: value
     secondary: {
         third: value
-        forth: value
+        fourth: value
     }
 }
 
 # Array
 key5: [
-    value1
-    value2
+    value
+    value
 ]
 
-# Array with complext values
+# Array with complex values
 key6: [
-    value1
-    value2
+    value
+    value
     {
-        key1: test
-        key2: test2
-        key3: [test3 test4]
+        key1: "test"
+        key2: "test2"
+        key3: ["test3" "test4"]
     }
     [
-        value3 
+        value 
     ]
 ]
 
