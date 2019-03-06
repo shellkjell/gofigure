@@ -9,6 +9,18 @@ import (
 	"github.com/alecthomas/participle/lexer"
 )
 
+// A valid indentifier part is one of the following:
+// 1. an escaped character, like \"
+// 2. @
+// 3. a string of characters
+var re_valid_ident_part = `(\\.|@|[a-zA-Z_][a-zA-Z\d_]+)`
+
+var re_valid_expansion_macro = `%{(` + re_valid_ident_part + `( |,)?)*}`
+
+// A valid identifier can be one or more valid identpart,
+// any one of them can be enclosed within the magic macro triggers, "%{" and "}"
+var re_valid_identifier = `(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `)(\.(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `))*`
+
 var PutinLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
 		`(\s+)` +
@@ -16,8 +28,8 @@ var PutinLexer = lexer.Must(lexer.Regexp(
 		`|([#;].*$)` +
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
-		`|(?P<Ident>(\\.|(@|[[:alpha:]_][[:alpha:]\d_]+)(\.(@|[[:alpha:]\d_]+))*))` +
-		`|(?P<ExpansionMacro>\.?%{([[:alpha:]_][[:alpha:]\d_]+,?)+}\.?)` +
+		`|(?P<Ident>` + re_valid_identifier + `)` +
+		// `|(?P<ExpansionMacro>\.?([[:alpha:]_][[:alpha:]\d_]+,?)+}\.?)` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
 		`|(?P<Punct>[][{},. :%])` +
@@ -46,7 +58,7 @@ type Include struct {
 }
 
 type Section struct {
-	Identifier []string `"[" (@(Ident " ")+ | ((@Ident? @ExpansionMacro?)!)* ) "]"`
+	Identifier []string `"[" @(Ident (" "|",")?)+ "]"`
 	Fields     []*Field ` (@@)* ("[]"|FileEnd)?`
 
 	Pos lexer.Position
