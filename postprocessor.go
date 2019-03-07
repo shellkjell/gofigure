@@ -100,9 +100,11 @@ func explodeExpansionMacroIdentifiers(identifiers *[]string) {
 				expandedIdentifiers = append(expandedIdentifiers, stringsToBeProcessedAgain...)
 				expandedIdentifiers = append(expandedIdentifiers, stringsFinished...)
 			}
-		} else {
-			expandedIdentifiers = append(expandedIdentifiers, dottedIdentifier)
+
+			continue
 		}
+
+		expandedIdentifiers = append(expandedIdentifiers, dottedIdentifier)
 	}
 
 	(*identifiers) = expandedIdentifiers
