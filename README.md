@@ -19,22 +19,38 @@ gofigure can be run
 git clone git@github.com:techbuddyab/gofigure
 ```
 
-Now, you can choose to run the software locally if you installed golang. As such
+Now, you can choose to build and run the software locally or with docker.
 
+#### Local
 ```
-# build with local go installation
+# build with local go installation - binary in project root
 make build-local
+# run with example file
+make run-local
 ```
 
 Upon which you will have a built binary in the project root folder.
-The docker way has the same end result
+
+#### Docker
+The docker way has the same end result as the local build
 
 ```
-# build in docker
+# build in docker - binary in project root
 make build
+# run with example file
+make run
 ```
 
-Now try your local copy of the software out with `make run` or `make run-local` depending on whether you chose the docker or local build way. Both should actually work after any build.
+#### After building
+Try running the software with your own .fig files.
+
+```
+# Print JSON to stdout
+./gofigure -i config.fig
+
+# Write JSON to file
+./gofigure -i config.fig -o config.json
+```
 
 ## Running the tests
 
