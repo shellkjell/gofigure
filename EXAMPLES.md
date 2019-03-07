@@ -3,7 +3,10 @@ In gofigure, there are a number of features designed to make your life easier.
 
 One of these features is the expansion macro. You can effectively expand roots as children of the root structure, or any other keymap.
 ```
-[root.%{root1,root2}] # prefix everything below this with root.root1. and root.root2. (creating a copy for every root within the expansion macro)
+[root.%{root1,root2}] 
+# The statement above will prefix everything below this up until the file ends 
+# or until the section is left with the "[]" keyword, with root.root1. and root.root2. 
+# (creating a copy for every root within the expansion macro)
 
 key:"value"
 
