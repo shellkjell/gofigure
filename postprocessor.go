@@ -271,16 +271,19 @@ func (c *CONFIG) toMap() (ret map[string]interface{}) {
 			for _, root := range processRoots {
 				mergeMapsOfInterface(root, finalValue.(map[string]interface{}))
 			}
-		} else { // Otherwise regular value
-			if value != nil {
-				if _, exists := ret[field.Key]; !exists {
-					ret[field.Key] = finalValue
-				} else { // Only maps are Reassigns == false, change to better name?
-					mergeMapsOfInterface(ret[field.Key].(map[string]interface{}), finalValue.(map[string]interface{}))
-				}
-			} else {
-				ret[field.Key] = nil
+
+			continue
+		}
+
+		// Otherwise regular value
+		if value != nil {
+			if _, exists := ret[field.Key]; !exists {
+				ret[field.Key] = finalValue
+			} else { // Only maps are Reassigns == false, change to better name?
+				mergeMapsOfInterface(ret[field.Key].(map[string]interface{}), finalValue.(map[string]interface{}))
 			}
+		} else {
+			ret[field.Key] = nil
 		}
 	}
 
@@ -314,9 +317,9 @@ func (thisArg *Field) splitAndAssociateChildren() (ret *Field) {
 
 		if currRoot.Value.Map == nil {
 			currRoot.Value.Map = make([]*Field, 1)
-			currRoot.Value.Map[0] = &Field{}
+			currRoot.Value.Map[0] = &Field{Pos: thisArg.Pos}
 		} else {
-			currRoot.Value.Map = append(currRoot.Value.Map, &Field{})
+			currRoot.Value.Map = append(currRoot.Value.Map, &Field{Pos: thisArg.Pos})
 		}
 
 		currRoot.Pos = thisArg.Pos
