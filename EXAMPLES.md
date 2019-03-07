@@ -5,7 +5,7 @@ One of these features is the expansion macro. You can effectively expand roots a
 ```
 [root.%{root1,root2}] 
 # The statement above will prefix everything below this up until the file ends 
-# or until the section is left with the "[]" keyword, with root.root1. and root.root2. 
+# or until the section is left with the "[]" operator, with root.root1. and root.root2. 
 # (creating a copy for every root within the expansion macro)
 
 key:"value"
