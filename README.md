@@ -67,7 +67,7 @@ Should output the JSON
 }
 ```
 
-For more advanced examples, look at the files in the [files](files) folder. For example [config.define_roots.fig](files/config.define_roots.fig)
+For more advanced examples, look at the files in the [files](files) folder. For example [config.define_roots.fig](files/config.define_roots.fig), or check out the [EXAMPLES](EXAMPLES.md) file.
 
 ### Prerequisites
 
