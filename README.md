@@ -10,13 +10,13 @@ Good. You shall now write .fig files for all of your projects.
 ## Example
 A quick example of what you can do with gofigure
 ```
-stringKey: "string" ; Comment
+value: "string" ; Comment
 
 integerKey: 42 # Comment
 
 floatKey: 4.2
 
-keyFromIdentifier: stringKey
+keyFromIdentifier: value
 
 mapKey: {
   key: "string"
