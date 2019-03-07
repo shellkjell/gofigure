@@ -15,11 +15,11 @@ import (
 // 3. a string of characters
 var re_valid_ident_part = `(\\.|@|[a-zA-Z_][a-zA-Z\d_]+)`
 
-var re_valid_expansion_macro = `%{(` + re_valid_ident_part + `( |,)?)*}`
+// var re_valid_expansion_macro = `%{(` + re_valid_ident_part + `( |,)?)*}`
 
 // A valid identifier can be one or more valid identpart,
 // any one of them can be enclosed within the magic macro triggers, "%{" and "}"
-var re_valid_identifier = `(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `)(\.(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `))*`
+// var re_valid_identifier = `(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `)(\.(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `))*`
 
 var PutinLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
@@ -28,8 +28,8 @@ var PutinLexer = lexer.Must(lexer.Regexp(
 		`|([#;].*$)` +
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
-		`|(?P<Ident>` + re_valid_identifier + `)` +
-		// `|(?P<ExpansionMacro>\.?([[:alpha:]_][[:alpha:]\d_]+,?)+}\.?)` +
+		`|(?P<Ident>` + re_valid_ident_part + `)` +
+		`|(?P<ExpansionMacro>%{([[:alpha:]_][[:alpha:]\d_]+,?)+})` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
 		`|(?P<Punct>[][{},. :%])` +
@@ -58,15 +58,16 @@ type Include struct {
 }
 
 type Section struct {
-	Identifier []string `"[" @(Ident (" "|",")?)+ "]"`
+	Identifier []string `"[" ((@Ident|@ExpansionMacro) (" "|",")?)+ "]"`
 	Fields     []*Field ` (@@)* ("[]"|FileEnd)?`
 
 	Pos lexer.Position
 }
 
 type Field struct {
-	Key   string `@Ident (":"`
-	Value *Value `@@)?`
+	Key   string   `@Ident `     // Key
+	Map   []*Field `( "." @@`    // When a child field should be created this is where it goes
+	Value *Value   `| ":" @@ )?` // ? == allow empty values
 
 	Pos lexer.Position
 }
@@ -80,11 +81,9 @@ type Value struct {
 	MultilineString *UnprocessedString `| @@`
 	Integer         *int64             `| @Int`
 	Float           *float64           `| @Float`
-	Identifier      *string            `| @Ident `
 	List            []*Value           `| "[" ((@@)*)? "]"`
 	Map             []*Field           `| "{" ((@@)*)? "}"`
-
-	Reassigns bool
+	Identifier      *string            `| @Ident @("." Ident)*`
 
 	Pos lexer.Position
 }

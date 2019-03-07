@@ -271,7 +271,7 @@ func (c *CONFIG) toMap() (ret map[string]interface{}) {
 			}
 		} else { // Otherwise regular value
 			if value != nil {
-				if _, exists := ret[field.Key]; value.Reassigns || !exists {
+				if _, exists := ret[field.Key]; !exists {
 					ret[field.Key] = finalValue
 				} else { // Only maps are Reassigns == false, change to better name?
 					mergeMapsOfInterface(ret[field.Key].(map[string]interface{}), finalValue.(map[string]interface{}))
@@ -327,16 +327,10 @@ func (thisArg *Field) splitAndAssociateChildren() (ret *Field) {
 	if thisArg.Value != nil && thisArg.Value.MultilineString != nil {
 		str := thisArg.Value.MultilineString.transform()
 		currRoot.Value = &Value{String: &str, Pos: thisArg.Value.Pos}
+	} else if thisArg.Map != nil {
+		currRoot.Value = &Value{Map: thisArg.Map, Pos: thisArg.Pos}
 	} else {
 		currRoot.Value = thisArg.Value
-	}
-
-	if currRoot.Value != nil {
-		if len(identifiers) > 1 {
-			currRoot.Value.Reassigns = false
-		} else {
-			currRoot.Value.Reassigns = true
-		}
 	}
 
 	currRoot.Key = identifiers[len(identifiers)-1]

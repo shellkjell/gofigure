@@ -5,9 +5,9 @@ build-local:
 	go get -d ./... && go build
 
 run:
-	docker run --rm -v $$PWD:/app -w /app -e GOPATH=/app/gopath golang:1.10 ./gofigure -i config.txt
+	docker run --rm -v $$PWD:/app -w /app -e GOPATH=/app/gopath golang:1.10 ./gofigure -i config.fig
 
 run-local:
-	./gofigure -i config.txt
+	./gofigure -i config.fig
 
 .PHONY: run run-local build
