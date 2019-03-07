@@ -5,7 +5,7 @@ Package gofigure is a fully functional configuration file parser with bells on
 ## Getting Started
 
 Want to get started with this simpler way of configuring software?
-Good. You will now write .fig files for all of your projects. Or maybe one can contain them all? ;-)
+Good. You shall now write .fig files for all of your projects.
 
 ### Prerequisites
 
