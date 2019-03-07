@@ -7,6 +7,68 @@ Package gofigure is a fully functional configuration file parser with bells on
 Want to get started with this simpler way of configuring software?
 Good. You shall now write .fig files for all of your projects.
 
+## Example
+A quick example of what you can do with gofigure
+```
+stringKey: "string" ; Comment
+
+integerKey: 42 # Comment
+
+floatKey: 4.2
+
+keyFromIdentifier: stringKey
+
+mapKey: {
+  key: "string"
+  int: integerKey
+  array: [
+    "Value"
+    floatKey
+  ]
+}
+
+arrayKey: [
+  value
+  value
+  {
+    key1: "test"
+    key2: "test2"
+    key3: ["test3" "test4"]
+  }
+  [
+    value 
+  ]
+]
+```
+
+Should output the JSON
+
+```
+{
+  "arrayKey": [
+    "string", 
+    "string", 
+    {
+      "key1": "test",
+      "key2": "test2",
+      "key3": ["test3", "test4"]
+    },
+    ["string"]
+  ],
+  "floatKey": 4.2,
+  "integerKey": 42,
+  "keyFromIdentifier": "string",
+  "mapKey": {
+    "array": ["Value", 4.2],
+    "int": 42,
+    "key": "string"
+  },
+  "value": "string"
+}
+```
+
+For more advanced examples, look at the files in the [files](files) folder. For example [config.define_roots.fig](files/config.define_roots.fig)
+
 ### Prerequisites
 
 gofigure can be run 
