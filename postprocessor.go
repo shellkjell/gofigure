@@ -327,9 +327,9 @@ func (thisArg *Field) splitAndAssociateChildren() (ret *Field) {
 	if thisArg.Value != nil && thisArg.Value.MultilineString != nil {
 		str := thisArg.Value.MultilineString.transform()
 		currRoot.Value = &Value{String: &str, Pos: thisArg.Value.Pos}
-	} else if thisArg.Map != nil {
-		currRoot.Value = &Value{Map: thisArg.Map, Pos: thisArg.Pos}
-	} else {
+	} else /*if thisArg.Children != nil {
+		currRoot.Value = &Value{Map: thisArg.Children, Pos: thisArg.Pos}
+	} else*/{
 		currRoot.Value = thisArg.Value
 	}
 
@@ -405,52 +405,52 @@ func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
 			ret.Entries[index].Include = nil
 		} else if ret.Entries[index].Section != nil {
 			// Map section in config
-			section := ret.Entries[index].Section
+			// section := ret.Entries[index].Section
 
-			// Expand root names
-			concatenateExpansionMacrosWithParentsAndChildren(&section.Identifier)
-			explodeExpansionMacroIdentifiers(&section.Identifier)
+			// // Expand root names
+			// concatenateExpansionMacrosWithParentsAndChildren(&section.Identifier)
+			// explodeExpansionMacroIdentifiers(&section.Identifier)
 
-			fieldList := section.Fields
+			// fieldList := section.Fields
 
-			tmpEntryList := make([]*Entry, len(fieldList)*len(section.Identifier))
+			// tmpEntryList := make([]*Entry, len(fieldList)*len(section.Identifier))
 
-			for j, dottedSectIdent := range section.Identifier { // For each section (may be multiple ones in Identifier)
-				for k, field := range fieldList {
-					realFieldName := dottedSectIdent
+			// for j, dottedSectIdent := range section.Identifier { // For each section (may be multiple ones in Identifier)
+			// 	for k, field := range fieldList {
+			// 		realFieldName := dottedSectIdent
 
-					if field.Key[0] == '.' || dottedSectIdent[len(dottedSectIdent)-1] == '.' {
-						realFieldName += field.Key
-					} else {
-						realFieldName += "." + field.Key
-					}
+			// 		if field.Key[0] == '.' || dottedSectIdent[len(dottedSectIdent)-1] == '.' {
+			// 			realFieldName += field.Key
+			// 		} else {
+			// 			realFieldName += "." + field.Key
+			// 		}
 
-					entryListIndex := (j * len(fieldList)) + k
+			// 		entryListIndex := (j * len(fieldList)) + k
 
-					sectIdentParts := splitIdentifiers(dottedSectIdent)
-					root := &Field{}
-					parent := root
-					for _, identPart := range sectIdentParts { // For each identPartifier
-						root.Key = identPart
-						root.Value = &Value{Map: []*Field{&Field{}}}
-						root = root.Value.Map[0]
-					}
+			// 		sectIdentParts := splitIdentifiers(dottedSectIdent)
+			// 		root := &Field{}
+			// 		parent := root
+			// 		for _, identPart := range sectIdentParts { // For each identPartifier
+			// 			root.Key = identPart
+			// 			root.Value = &Value{Map: []*Field{&Field{}}}
+			// 			root = root.Value.Map[0]
+			// 		}
 
-					root.Key = field.Key
-					root.Value = field.Value
+			// 		root.Key = field.Key
+			// 		root.Value = field.Value
 
-					tmpEntryList[entryListIndex] = &Entry{Field: parent}
-				}
+			// 		tmpEntryList[entryListIndex] = &Entry{Field: parent}
+			// 	}
 
-			}
+			// }
 
-			lastSlice := make([]*Entry, len(ret.Entries)-(i+indexAdder+1))
+			// lastSlice := make([]*Entry, len(ret.Entries)-(i+indexAdder+1))
 
-			ret.Entries = append(ret.Entries[:index], tmpEntryList[:]...)
+			// ret.Entries = append(ret.Entries[:index], tmpEntryList[:]...)
 
-			ret.Entries = append(ret.Entries, lastSlice...)
+			// ret.Entries = append(ret.Entries, lastSlice...)
 
-			indexAdder += len(tmpEntryList) - 1
+			// indexAdder += len(tmpEntryList) - 1
 		}
 	}
 
