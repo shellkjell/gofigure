@@ -6,108 +6,6 @@ import (
 	"strconv"
 )
 
-func concatenateExpansionMacrosWithParentsAndChildren(identifiers *[]string) {
-	// Concatenate all expansion macros
-	for i := 0; i < len(*identifiers); i++ {
-		if len((*identifiers)[i]) < 4 {
-			continue
-		}
-
-		identifier := (*identifiers)[i]
-
-		if !isValidExpansionMacro(identifier) {
-			continue
-		}
-
-		hasParent := identifier[0] == '.'
-		hasChild := identifier[len(identifier)-1] == '.'
-		isLast := i == len(*identifiers)-1
-
-		newIdentifiers := (*identifiers)[:]
-
-		nwIdentsIndex := i
-		if hasParent && i != 0 {
-			newIdentifiers[i-1] = newIdentifiers[i-1] + newIdentifiers[i]
-			newIdentifiers = append(newIdentifiers[:i], newIdentifiers[i+1:]...)
-			nwIdentsIndex--
-		}
-
-		if hasChild && !isLast { // append next string element aswell
-			newIdentifiers[nwIdentsIndex] = newIdentifiers[nwIdentsIndex] + newIdentifiers[nwIdentsIndex+1]
-			newIdentifiers = append(newIdentifiers[:nwIdentsIndex+1], newIdentifiers[nwIdentsIndex+2:]...)
-		}
-
-		i--
-		(*identifiers) = newIdentifiers
-	}
-}
-
-func explodeExpansionMacroIdentifiers(identifiers *[]string) {
-	/*
-	  Expand the section names of all identifiers within a section. e.g. [root.%{dev,prod} root2.%{dev,prod}]
-	  This will then look like [root.dev root.prod root2.dev root2.prod]
-	*/
-	expandedIdentifiers := []string{}
-
-	for _, dottedIdentifier := range *identifiers {
-		identifierParts := splitIdentifiers(dottedIdentifier)
-		indices := []int{}
-
-		// Look at all identifier parts individually, e.g. [root.root2] where both root and root2 is a part each
-		for i, identPart := range identifierParts {
-			if isValidExpansionMacro(identPart) {
-				indices = append(indices, i)
-			}
-		}
-
-		if len(indices) != 0 {
-			for _, index := range indices {
-				// Any string with more expansion macros than one is going to be processed again by this function.
-				// Every other finished string is in stringsFinished
-				var stringsToBeProcessedAgain, stringsFinished []string
-
-				splitRootNames := splitExpansionMacro(identifierParts[index])
-
-				for _, nwRootName := range splitRootNames {
-					identStr := ""
-					shouldProcessAgain := false
-
-					for i, identifierPart := range identifierParts {
-						if i == index {
-							identStr += nwRootName
-						} else {
-							identStr += identifierPart
-						}
-
-						if !shouldProcessAgain && isValidExpansionMacro(identifierPart) {
-							shouldProcessAgain = true
-						}
-
-						if i != len(identifierParts)-1 {
-							identStr += "."
-						}
-					}
-
-					if shouldProcessAgain {
-						stringsToBeProcessedAgain = append(stringsToBeProcessedAgain, identStr)
-					} else {
-						stringsFinished = append(stringsFinished, identStr)
-					}
-				}
-
-				explodeExpansionMacroIdentifiers(&stringsToBeProcessedAgain)
-
-				expandedIdentifiers = append(expandedIdentifiers, stringsToBeProcessedAgain...)
-				expandedIdentifiers = append(expandedIdentifiers, stringsFinished...)
-			}
-		} else {
-			expandedIdentifiers = append(expandedIdentifiers, dottedIdentifier)
-		}
-	}
-
-	(*identifiers) = expandedIdentifiers
-}
-
 func lookupIdentifierInRoot(multiKeyName *string, root map[string]interface{}) (interface{}, error) {
 	keyNames := splitIdentifiers(*multiKeyName)
 
@@ -165,7 +63,11 @@ func (v *Value) toFinalValue(root map[string]interface{}) (ret interface{}) {
 		nwMap := map[string]interface{}{}
 		// expand roots?
 		for _, field := range v.Map {
-			nwMap[field.Key] = field.Value.toFinalValue(nwMap)
+			if field.Value == nil {
+				delete(nwMap, field.Key)
+			} else {
+				nwMap[field.Key] = field.Value.toFinalValue(nwMap)
+			}
 		}
 
 		ret = nwMap
@@ -231,7 +133,10 @@ func mergeMapsOfInterface(dst, src map[string]interface{}) {
 
 // Transform - Takes a freshly parsed config file and transforms it to a map
 func (c *CONFIG) Transform() map[string]interface{} {
-	c = c.splitAndAssociateChildren()
+	c = c.parseIncludesAndAppendToConfig()
+	c = c.explodeSectionsToFields()
+	c = c.childFieldsToMap()
+
 	return c.toMap()
 }
 
@@ -292,175 +197,378 @@ func (c *CONFIG) toMap() (ret map[string]interface{}) {
 	return
 }
 
-// Returns an expanded copy of the Field that is the caller
-func (thisArg *Field) splitAndAssociateChildren() (ret *Field) {
-	ret = &Field{Pos: thisArg.Pos}
-
-	identifiers := splitIdentifiers(thisArg.Key)
-	currRoot := ret
-
-	// Dive into structure and set currRoot to the last child in order,
-	// e.g. "i.am.last" where "last" is the last child
-	for i := 0; i < len(identifiers)-1; i++ {
-		identifier := identifiers[i]
-		currRoot.Key = identifier
-
-		// Make new child
-		if currRoot.Value == nil {
-			currRoot.Value = &Value{}
-		}
-
-		if currRoot.Value.Map == nil {
-			currRoot.Value.Map = make([]*Field, 1)
-			currRoot.Value.Map[0] = &Field{}
-		} else {
-			currRoot.Value.Map = append(currRoot.Value.Map, &Field{})
-		}
-
-		currRoot.Pos = thisArg.Pos
-
-		// Go down one level
-		currRoot = currRoot.Value.Map[len(currRoot.Value.Map)-1]
-	}
-
-	// We're now at last child
-	if thisArg.Value != nil && thisArg.Value.MultilineString != nil {
-		str := thisArg.Value.MultilineString.transform()
-		currRoot.Value = &Value{String: &str, Pos: thisArg.Value.Pos}
-	} else /*if thisArg.Children != nil {
-		currRoot.Value = &Value{Map: thisArg.Children, Pos: thisArg.Pos}
-	} else*/{
-		currRoot.Value = thisArg.Value
-	}
-
-	currRoot.Key = identifiers[len(identifiers)-1]
-
-	return
-}
-
-func (thisArg *Entry) splitAndAssociateChildren() (ret *Entry) {
-	ret = &Entry{Pos: thisArg.Pos}
-
-	if thisArg.Field != nil {
-		if thisArg.Field.Key == "" && thisArg.Field.Value == nil {
-			ret = nil
-		} else {
-			ret.Field = thisArg.Field.splitAndAssociateChildren()
-		}
-	} else if thisArg.Include != nil {
-		//Handle includes
-		thisArg.Include.Parsed = make([]*CONFIG, len(thisArg.Include.Includes))
-		for i, include := range thisArg.Include.Includes {
-			includedConfig := ParseFile(include, nil)
-			thisArg.Include.Parsed[i] = includedConfig.splitAndAssociateChildren()
-		}
-
-		ret.Include = thisArg.Include
-	} else { // Has to be a section
-		nwFieldList := make([]*Field, len(thisArg.Section.Fields))
-		for i, field := range thisArg.Section.Fields {
-			nwFieldList[i] = field.splitAndAssociateChildren()
-		}
-
-		thisArg.Section.Fields = nwFieldList
-
-		ret.Section = thisArg.Section
-	}
-
-	return
-}
-
-// Returns an exploded copy of the config (references are still the same)
-func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
+func (c *CONFIG) childFieldsToMap() (ret *CONFIG) {
 	ret = &CONFIG{}
-	ret.Entries = make([]*Entry, len(thisArg.Entries))
+	ret.Entries = make([]*Entry, len(c.Entries))
 
-	indexAdder := 0
-	for i := 0; i < len(thisArg.Entries); i++ {
-		entry := thisArg.Entries[i]
-		index := i + indexAdder
-
-		splitEntry := entry.splitAndAssociateChildren()
-
-		if splitEntry != nil {
-			ret.Entries[index] = splitEntry
-		} else { // Remove entry
-			ret.Entries = append(ret.Entries[:index], ret.Entries[index+1:]...)
+	for i, entry := range c.Entries {
+		if entry.Field == nil {
+			ret.Entries[i] = entry
 			continue
 		}
 
-		if ret.Entries[index].Include != nil {
-			// append exploded and included entries in correct order
-			includeStruct := ret.Entries[index].Include
-			for _, parsedConfig := range includeStruct.Parsed { //Todo: take into consideration index here and append based on that (Support comma separated includes)
-				lastSlice := make([]*Entry, len(ret.Entries)-(i+indexAdder+1))
-
-				ret.Entries = append(ret.Entries[:index], parsedConfig.Entries[:]...)
-
-				ret.Entries = append(ret.Entries, lastSlice...)
-
-				indexAdder += len(parsedConfig.Entries) - 1
-			}
-
-			ret.Entries[index].Include = nil
-		} else if ret.Entries[index].Section != nil {
-			// Map section in config
-			// section := ret.Entries[index].Section
-
-			// // Expand root names
-			// concatenateExpansionMacrosWithParentsAndChildren(&section.Identifier)
-			// explodeExpansionMacroIdentifiers(&section.Identifier)
-
-			// fieldList := section.Fields
-
-			// tmpEntryList := make([]*Entry, len(fieldList)*len(section.Identifier))
-
-			// for j, dottedSectIdent := range section.Identifier { // For each section (may be multiple ones in Identifier)
-			// 	for k, field := range fieldList {
-			// 		realFieldName := dottedSectIdent
-
-			// 		if field.Key[0] == '.' || dottedSectIdent[len(dottedSectIdent)-1] == '.' {
-			// 			realFieldName += field.Key
-			// 		} else {
-			// 			realFieldName += "." + field.Key
-			// 		}
-
-			// 		entryListIndex := (j * len(fieldList)) + k
-
-			// 		sectIdentParts := splitIdentifiers(dottedSectIdent)
-			// 		root := &Field{}
-			// 		parent := root
-			// 		for _, identPart := range sectIdentParts { // For each identPartifier
-			// 			root.Key = identPart
-			// 			root.Value = &Value{Map: []*Field{&Field{}}}
-			// 			root = root.Value.Map[0]
-			// 		}
-
-			// 		root.Key = field.Key
-			// 		root.Value = field.Value
-
-			// 		tmpEntryList[entryListIndex] = &Entry{Field: parent}
-			// 	}
-
-			// }
-
-			// lastSlice := make([]*Entry, len(ret.Entries)-(i+indexAdder+1))
-
-			// ret.Entries = append(ret.Entries[:index], tmpEntryList[:]...)
-
-			// ret.Entries = append(ret.Entries, lastSlice...)
-
-			// indexAdder += len(tmpEntryList) - 1
+		currField := entry.Field
+		for currField.Child != nil {
+			currField.Value = &Value{Map: []*Field{currField.Child}}
+			currField.Child = nil
+			currField = currField.Value.Map[0]
 		}
-	}
 
-	// At this point, only Entries with a Field should exist
-	if len(ret.Entries) == 0 {
-		ret.Entries = nil
+		ret.Entries[i] = entry
 	}
 
 	return
 }
+
+// Takes one section root and explodes every expansion macro, including at root and all child levels
+func (s *SectionRoot) explodeExpansionMacros(startAtChild int) (ret []*SectionRoot) {
+	if startAtChild == 0 && isValidExpansionMacro(*s.Identifier) { // Expand root expansion macro
+		expandedRootNames := splitExpansionMacro(*s.Identifier)
+		ret = make([]*SectionRoot, len(expandedRootNames))
+
+		for i, rootName := range expandedRootNames {
+			ret[i] = &SectionRoot{Identifier: &rootName, Pos: s.Pos, Child: s.Child, Fields: s.Fields}
+		}
+
+		nwRetVal := []*SectionRoot{}
+		for _, sectRoot := range ret {
+			expandedSectRoots := sectRoot.explodeExpansionMacros(1) // start at first child
+			nwRetVal = append(nwRetVal, expandedSectRoots...)
+		}
+
+		ret = nwRetVal
+		return
+	}
+
+	retSectRoot := &SectionRoot{s.Identifier, s.Child, s.Fields, s.Pos}
+	currRoot := retSectRoot.Child
+
+	// From what level we shall expand
+	var currChildLevel int
+	for currChildLevel = 0; currChildLevel < startAtChild && currRoot != nil; currChildLevel++ {
+		currRoot = currRoot.Child
+	}
+
+	if currRoot == nil {
+		ret = []*SectionRoot{retSectRoot}
+		return
+	}
+
+	nwRetVal := []*SectionRoot{}
+
+	for currRoot != nil {
+		if isValidExpansionMacro(*currRoot.Identifier) {
+			ret = []*SectionRoot{}
+
+			expandedRootNames := splitExpansionMacro(*currRoot.Identifier)
+			newChildren := []*SectionChild{}
+
+			for _, rootName := range expandedRootNames {
+				nwRootName := rootName // Allocate new string
+				nwChild := &SectionChild{}
+				nwChild.Child = currRoot.Child
+				nwChild.Fields = currRoot.Fields
+				nwChild.Identifier = &nwRootName
+				nwChild.Pos = currRoot.Pos
+
+				newChildren = append(newChildren, nwChild)
+			}
+
+			for _, nwChild := range newChildren {
+				currNewChild := &SectionChild{}
+				nwSectRoot := &SectionRoot{Pos: s.Pos, Child: currNewChild, Identifier: s.Identifier, Fields: s.Fields}
+
+				currChild := s.Child
+
+				// Fill all up until this level (already expanded)
+				for j := 0; j < currChildLevel; j++ {
+					currNewChild.Identifier = currChild.Identifier
+					currNewChild.Child = &SectionChild{}
+					currNewChild = currNewChild.Child
+					currChild = currChild.Child
+				}
+
+				*currNewChild = *nwChild
+				currNewChild.Child = currChild.Child
+
+				// Expand children below current one
+				expandedSectRoots := nwSectRoot.explodeExpansionMacros(currChildLevel + 1)
+				nwRetVal = append(nwRetVal, expandedSectRoots...)
+			}
+		}
+
+		currRoot = currRoot.Child
+		currChildLevel++
+	}
+
+	if len(nwRetVal) != 0 {
+		ret = nwRetVal
+	} else {
+		ret = []*SectionRoot{retSectRoot}
+	}
+
+	return
+}
+
+func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
+	ret = &CONFIG{}
+	ret.Entries = make([]*Entry, len(c.Entries))
+
+	for i := 0; i < len(ret.Entries); i++ {
+		entry := c.Entries[i]
+		if entry.Section == nil {
+			ret.Entries[i] = entry
+			continue
+		}
+
+		section := entry.Section
+
+		rootField := &Field{Key: *section.Identifier, Pos: entry.Pos}
+		currField := rootField
+
+		newSections := section.explodeExpansionMacros(0)
+
+		for _, nwSection := range newSections {
+			// expand all sections to values
+			childSection := nwSection.Child
+
+			if childSection == nil {
+				ret.Entries[i] = &Entry{Field: &Field{Key: *nwSection.Identifier, Value: &Value{Map: nwSection.Fields}}}
+				continue
+			}
+
+			for childSection.Child != nil {
+				// expand eventual macro
+				currField.Value = &Value{Map: []*Field{&Field{Key: *section.Identifier, Pos: entry.Pos}}, Pos: entry.Pos}
+				currField = currField.Value.Map[0]
+
+				childSection = childSection.Child
+			}
+
+			currField.Key = *childSection.Identifier
+
+			// Make a new value for the field
+			newValue := &Value{}
+			newValue.Map = make([]*Field, len(childSection.Fields))
+
+			for j, field := range childSection.Fields {
+				newValue.Map[j] = field
+			}
+
+			ret.Entries[i] = &Entry{Field: rootField, Pos: entry.Pos}
+		}
+	}
+
+	return
+}
+
+func (c *CONFIG) parseIncludesAndAppendToConfig() (ret *CONFIG) {
+	ret = &CONFIG{}
+	ret.Entries = make([]*Entry, len(c.Entries))
+
+	for i := 0; i < len(ret.Entries); i++ {
+		entry := c.Entries[i]
+
+		if entry.Include == nil {
+			ret.Entries[i] = entry
+			continue
+		}
+
+		include := entry.Include
+		newConfigList := make([]*CONFIG, len(include.Includes))
+
+		parser := BuildParser()
+
+		// Parse includes
+		for j, includeName := range include.Includes {
+			newConfig := ParseFile(includeName, parser)
+
+			newConfig = newConfig.parseIncludesAndAppendToConfig()
+
+			newConfigList[j] = newConfig
+		}
+
+		// Append new entries in main config and remove the include entry
+		for _, newConfig := range newConfigList {
+			newEntryList := append(ret.Entries[:i], newConfig.Entries...)
+			newEntryList = append(newEntryList, ret.Entries[i+1:]...)
+
+			ret.Entries = newEntryList
+		}
+	}
+
+	return
+}
+
+// // Returns an expanded copy of the Field that is the caller
+// func (thisArg *Field) splitAndAssociateChildren() (ret *Field) {
+// 	ret = &Field{Pos: thisArg.Pos}
+
+// 	identifiers := splitIdentifiers(thisArg.Key)
+// 	currRoot := ret
+
+// 	// Dive into structure and set currRoot to the last child in order,
+// 	// e.g. "i.am.last" where "last" is the last child
+// 	for i := 0; i < len(identifiers)-1; i++ {
+// 		identifier := identifiers[i]
+// 		currRoot.Key = identifier
+
+// 		// Make new child
+// 		if currRoot.Value == nil {
+// 			currRoot.Value = &Value{}
+// 		}
+
+// 		if currRoot.Value.Map == nil {
+// 			currRoot.Value.Map = make([]*Field, 1)
+// 			currRoot.Value.Map[0] = &Field{}
+// 		} else {
+// 			currRoot.Value.Map = append(currRoot.Value.Map, &Field{})
+// 		}
+
+// 		currRoot.Pos = thisArg.Pos
+
+// 		// Go down one level
+// 		currRoot = currRoot.Value.Map[len(currRoot.Value.Map)-1]
+// 	}
+
+// 	// We're now at last child
+// 	if thisArg.Value != nil && thisArg.Value.MultilineString != nil {
+// 		str := thisArg.Value.MultilineString.transform()
+// 		currRoot.Value = &Value{String: &str, Pos: thisArg.Value.Pos}
+// 	} else /*if thisArg.Children != nil {
+// 		currRoot.Value = &Value{Map: thisArg.Children, Pos: thisArg.Pos}
+// 	} else*/{
+// 		currRoot.Value = thisArg.Value
+// 	}
+
+// 	currRoot.Key = identifiers[len(identifiers)-1]
+
+// 	return
+// }
+
+// func (thisArg *Entry) splitAndAssociateChildren() (ret *Entry) {
+// 	ret = &Entry{Pos: thisArg.Pos}
+
+// 	if thisArg.Field != nil {
+// 		if thisArg.Field.Key == "" && thisArg.Field.Value == nil {
+// 			ret = nil
+// 		} else {
+// 			ret.Field = thisArg.Field.splitAndAssociateChildren()
+// 		}
+// 	} else if thisArg.Include != nil {
+// 		//Handle includes
+// 		thisArg.Include.Parsed = make([]*CONFIG, len(thisArg.Include.Includes))
+// 		for i, include := range thisArg.Include.Includes {
+// 			includedConfig := ParseFile(include, nil)
+// 			thisArg.Include.Parsed[i] = includedConfig.splitAndAssociateChildren()
+// 		}
+
+// 		ret.Include = thisArg.Include
+// 	} else { // Has to be a section
+// 		nwFieldList := make([]*Field, len(thisArg.Section.Fields))
+// 		for i, field := range thisArg.Section.Fields {
+// 			nwFieldList[i] = field.splitAndAssociateChildren()
+// 		}
+
+// 		thisArg.Section.Fields = nwFieldList
+
+// 		ret.Section = thisArg.Section
+// 	}
+
+// 	return
+// }
+
+// // Returns an exploded copy of the config (references are still the same)
+// func (thisArg *CONFIG) splitAndAssociateChildren() (ret *CONFIG) {
+// 	ret = &CONFIG{}
+// 	ret.Entries = make([]*Entry, len(thisArg.Entries))
+
+// 	indexAdder := 0
+// 	for i := 0; i < len(thisArg.Entries); i++ {
+// 		entry := thisArg.Entries[i]
+// 		index := i + indexAdder
+
+// 		splitEntry := entry.splitAndAssociateChildren()
+
+// 		if splitEntry != nil {
+// 			ret.Entries[index] = splitEntry
+// 		} else { // Remove entry
+// 			ret.Entries = append(ret.Entries[:index], ret.Entries[index+1:]...)
+// 			continue
+// 		}
+
+// 		if ret.Entries[index].Include != nil {
+// 			// append exploded and included entries in correct order
+// 			includeStruct := ret.Entries[index].Include
+// 			for _, parsedConfig := range includeStruct.Parsed { //Todo: take into consideration index here and append based on that (Support comma separated includes)
+// 				lastSlice := make([]*Entry, len(ret.Entries)-(i+indexAdder+1))
+
+// 				ret.Entries = append(ret.Entries[:index], parsedConfig.Entries[:]...)
+
+// 				ret.Entries = append(ret.Entries, lastSlice...)
+
+// 				indexAdder += len(parsedConfig.Entries) - 1
+// 			}
+
+// 			ret.Entries[index].Include = nil
+// 		} else if ret.Entries[index].Section != nil {
+// 			// Map section in config
+// 			// section := ret.Entries[index].Section
+
+// 			// // Expand root names
+// 			// concatenateExpansionMacrosWithParentsAndChildren(&section.Identifier)
+// 			// explodeExpansionMacroIdentifiers(&section.Identifier)
+
+// 			// fieldList := section.Fields
+
+// 			// tmpEntryList := make([]*Entry, len(fieldList)*len(section.Identifier))
+
+// 			// for j, dottedSectIdent := range section.Identifier { // For each section (may be multiple ones in Identifier)
+// 			// 	for k, field := range fieldList {
+// 			// 		realFieldName := dottedSectIdent
+
+// 			// 		if field.Key[0] == '.' || dottedSectIdent[len(dottedSectIdent)-1] == '.' {
+// 			// 			realFieldName += field.Key
+// 			// 		} else {
+// 			// 			realFieldName += "." + field.Key
+// 			// 		}
+
+// 			// 		entryListIndex := (j * len(fieldList)) + k
+
+// 			// 		sectIdentParts := splitIdentifiers(dottedSectIdent)
+// 			// 		root := &Field{}
+// 			// 		parent := root
+// 			// 		for _, identPart := range sectIdentParts { // For each identPartifier
+// 			// 			root.Key = identPart
+// 			// 			root.Value = &Value{Map: []*Field{&Field{}}}
+// 			// 			root = root.Value.Map[0]
+// 			// 		}
+
+// 			// 		root.Key = field.Key
+// 			// 		root.Value = field.Value
+
+// 			// 		tmpEntryList[entryListIndex] = &Entry{Field: parent}
+// 			// 	}
+
+// 			// }
+
+// 			// lastSlice := make([]*Entry, len(ret.Entries)-(i+indexAdder+1))
+
+// 			// ret.Entries = append(ret.Entries[:index], tmpEntryList[:]...)
+
+// 			// ret.Entries = append(ret.Entries, lastSlice...)
+
+// 			// indexAdder += len(tmpEntryList) - 1
+// 		}
+// 	}
+
+// 	// At this point, only Entries with a Field should exist
+// 	if len(ret.Entries) == 0 {
+// 		ret.Entries = nil
+// 	}
+
+// 	return
+// }
 
 // This function removes leading/trailing whitespaces, string quotes etc.
 func (thisArg *UnprocessedString) transform() (final string) {

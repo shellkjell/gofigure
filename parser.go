@@ -32,6 +32,7 @@ var PutinLexer = lexer.Must(lexer.Regexp(
 		`|(?P<ExpansionMacro>%{([[:alpha:]_][[:alpha:]\d_]+,?)+})` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
+		`|(?P<SectionEnd>\[\])` +
 		`|(?P<Punct>[][{},. :%])`,
 ))
 
@@ -42,24 +43,36 @@ type CONFIG struct {
 }
 
 type Entry struct {
-	Include *Include `@@`
-	Field   *Field   `| @@`
-	Section *Section `| @@ ("[""]"|EOF)`
+	Include *Include     `@@`
+	Field   *Field       `| @@`
+	Section *SectionRoot `| @@`
 
 	Pos lexer.Position
 }
 
 type Include struct {
 	Includes []string `"#include" @String (","? @String)*`
-	Parsed   []*CONFIG
 
 	Pos lexer.Position
 }
 
-type Section struct {
-	Identifier []string `("["|".") @(Ident|ExpansionMacro)`
-	Child      *Section `(@@ `
-	Fields     []*Field `| "]" (@@)*)?`
+/*
+	As SectionRoot and SectionChild must have different rules for how they are parsed,
+	they have to be separate structres.
+*/
+
+type SectionRoot struct {
+	Identifier *string       `"[" @(Ident|ExpansionMacro)`
+	Child      *SectionChild `(@@`
+	Fields     []*Field      `|"]") (@@)*`
+
+	Pos lexer.Position
+}
+
+type SectionChild struct {
+	Identifier *string       `"." @(Ident|ExpansionMacro)`
+	Child      *SectionChild `(@@`
+	Fields     []*Field      `|"]") (@@)*`
 
 	Pos lexer.Position
 }
@@ -99,7 +112,6 @@ func BuildParser() (parser *participle.Parser) {
 		&CONFIG{},
 		participle.Lexer(PutinLexer),
 		participle.Unquote("String"),
-		participle.UseLookahead(1),
 	)
 
 	check(err)
