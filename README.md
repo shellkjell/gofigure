@@ -72,7 +72,7 @@ For more advanced examples, look at the files in the [files](files) folder or ch
 ### Prerequisites
 
 gofigure can be run 
-* in a docker container - requires an installation of `docker`
+* in a docker container
 * locally on your machine - requires an installation of `golang` (this implementation was written in version 1.10)
 
 ### Installing
