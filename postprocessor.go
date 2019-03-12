@@ -11,12 +11,18 @@ func lookupIdentifierInRoot(multiKeyName *string, root map[string]interface{}) (
 
 	var currRoot interface{}
 	currRoot = root
-	for _, keyName := range keyNames {
-		if _, exists := currRoot.(map[string]interface{})[keyName]; !exists {
-			return nil, errors.New("No key with the name \"" + keyName + "\" exists from query: \"" + *multiKeyName + "\"")
-		}
+	for i, keyName := range keyNames {
+		switch currRoot.(type) {
+		case map[string]interface{}:
+			if _, exists := currRoot.(map[string]interface{})[keyName]; !exists {
+				return nil, errors.New("No key with the name \"" + keyName + "\" exists. From query: \"" + *multiKeyName + "\"")
+			}
 
-		currRoot = currRoot.(map[string]interface{})[keyName]
+			currRoot = currRoot.(map[string]interface{})[keyName]
+			break
+		default:
+			return nil, errors.New("Key with the name \"" + keyNames[i] + "\" is not a map. From query: \"" + *multiKeyName + "\"")
+		}
 	}
 
 	return currRoot, nil
