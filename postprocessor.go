@@ -350,11 +350,11 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 	ret = &CONFIG{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
-	for i, entriesIndex := 0, 0; i < len(c.Entries); i++ {
+	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {
 		entry := c.Entries[i]
 		if entry.Section == nil {
-			ret.Entries[entriesIndex] = entry
-			entriesIndex++
+			ret.Entries[newEntriesIndex] = entry
+			newEntriesIndex++
 			continue
 		}
 
@@ -377,17 +377,6 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 				}
 
 				newEntries = append(newEntries, &Entry{Field: rootField})
-
-				firstSlice := ret.Entries[:entriesIndex]
-				var lastSlice []*Entry
-
-				if entriesIndex != len(ret.Entries)-1 {
-					lastSlice = ret.Entries[entriesIndex+1:]
-				}
-
-				ret.Entries = append(firstSlice, newEntries...)
-				ret.Entries = append(ret.Entries, lastSlice...)
-				entriesIndex += len(newEntries)
 				continue
 			}
 
@@ -408,18 +397,19 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 			currField.Value = newValue
 
 			newEntries = append(newEntries, &Entry{Field: rootField, Pos: entry.Pos})
-
-			firstSlice := ret.Entries[:entriesIndex]
-			var lastSlice []*Entry
-
-			if entriesIndex <= len(ret.Entries)-1 {
-				lastSlice = ret.Entries[entriesIndex+1:]
-			}
-
-			ret.Entries = append(firstSlice, newEntries...)
-			ret.Entries = append(ret.Entries, lastSlice...)
-			entriesIndex += len(newEntries)
 		}
+
+		firstSlice := ret.Entries[:newEntriesIndex]
+		var lastSlice []*Entry
+
+		if newEntriesIndex < len(ret.Entries)-1 {
+			lastSlice = ret.Entries[newEntriesIndex+1:]
+		}
+
+		ret.Entries = append(firstSlice, newEntries...)
+		ret.Entries = append(ret.Entries, lastSlice...)
+
+		newEntriesIndex += len(newEntries)
 	}
 
 	return
