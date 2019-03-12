@@ -35,5 +35,5 @@ width: 40
 height: 30
 
 
-[dev prod]
+[%{dev,prod}]
 host: "localhost"

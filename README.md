@@ -130,6 +130,7 @@ No `CONTRIBUTING.md` yet, but feel free to submit an issue if you have problems 
 ## Authors
 
 * **Zakay Danial** - *Idea, initial structure and mastermind* - [Zakay](https://github.com/Zakay)
+* **Stefano DeColli** - *Algorithm inspiration* - [sealos](https://github.com/sealos)
 * **Simon Haak** - *Full implementation* - [shellkjell](https://github.com/shellkjell)
 
 ## License

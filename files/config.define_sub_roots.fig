@@ -1,5 +1,5 @@
 # [@] is already defined as dev,production
-[dev production]
+[%{dev,production}]
 localhost:"10.10.10.10"
 root: "root"
 

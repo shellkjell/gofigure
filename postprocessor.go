@@ -386,6 +386,7 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 
 				ret.Entries = append(firstSlice, newEntries...)
 				ret.Entries = append(ret.Entries, lastSlice...)
+				entriesIndex += len(newEntries) - 1
 				continue
 			}
 
@@ -410,15 +411,14 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 			firstSlice := ret.Entries[:entriesIndex]
 			var lastSlice []*Entry
 
-			if entriesIndex != len(ret.Entries)-1 {
+			if entriesIndex <= len(ret.Entries)-1 {
 				lastSlice = ret.Entries[entriesIndex+1:]
 			}
 
 			ret.Entries = append(firstSlice, newEntries...)
 			ret.Entries = append(ret.Entries, lastSlice...)
+			entriesIndex += len(newEntries)
 		}
-
-		entriesIndex += len(newEntries)
 	}
 
 	return
