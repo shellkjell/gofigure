@@ -353,7 +353,8 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 	for i, entriesIndex := 0, 0; i < len(c.Entries); i++ {
 		entry := c.Entries[i]
 		if entry.Section == nil {
-			ret.Entries[i] = entry
+			ret.Entries[entriesIndex] = entry
+			entriesIndex++
 			continue
 		}
 
@@ -386,7 +387,7 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 
 				ret.Entries = append(firstSlice, newEntries...)
 				ret.Entries = append(ret.Entries, lastSlice...)
-				entriesIndex += len(newEntries) - 1
+				entriesIndex += len(newEntries)
 				continue
 			}
 
