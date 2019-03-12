@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-
-	"github.com/alecthomas/repr"
 )
 
 var stderr = log.New(os.Stderr, "", 0)
@@ -39,9 +37,9 @@ func main() {
 
 	config := ParseFile(inFile, nil)
 
-	repr.Println(config, repr.Indent("  "), repr.OmitEmpty(true))
+	// repr.Println(config, repr.Indent("  "), repr.OmitEmpty(true))
 
-	mapped := config.toMap()
+	mapped := config.Transform()
 
 	marshaled, err := json.Marshal(mapped)
 

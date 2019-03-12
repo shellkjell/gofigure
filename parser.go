@@ -64,7 +64,7 @@ type Include struct {
 type SectionRoot struct {
 	Identifier *string       `"[" @(Ident|ExpansionMacro)`
 	Child      *SectionChild `(@@`
-	Fields     []*Field      `|"]") (@@)*`
+	Fields     []*Field      `|"]") (@@)* (SectionEnd|EOF)?`
 
 	Pos lexer.Position
 }
@@ -72,7 +72,7 @@ type SectionRoot struct {
 type SectionChild struct {
 	Identifier *string       `"." @(Ident|ExpansionMacro)`
 	Child      *SectionChild `(@@`
-	Fields     []*Field      `|"]") (@@)*`
+	Fields     []*Field      `|"]") (@@)* (SectionEnd|EOF)?`
 
 	Pos lexer.Position
 }
@@ -158,5 +158,8 @@ func splitIdentifiers(identStr string) (idents []string) {
 }
 
 func splitExpansionMacro(macroStr string) []string {
-	return strings.Split(macroStr[2:len(macroStr)-1], ",") // Remove leading "%{" and trailing "}" and then split string at comma
+	if isValidExpansionMacro(macroStr) {
+		return strings.Split(macroStr[2:len(macroStr)-1], ",") // Remove leading "%{" and trailing "}" and then split string at comma
+	}
+	return []string{macroStr}
 }
