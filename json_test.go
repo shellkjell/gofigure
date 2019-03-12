@@ -26,7 +26,7 @@ func TestJsonMarshalCases(t *testing.T) {
 		},
 
 		MarshalJSONTestCase{
-			data:     `[root1 root2] key:"value" [@.%{dev,prod,qa}] key:"value"`,
+			data:     `[%{root1,root2}] key:"value" [@.%{dev,prod,qa}] key:"value"`,
 			expected: `{"root1":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}},"root2":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}}}`,
 		},
 
@@ -35,7 +35,7 @@ func TestJsonMarshalCases(t *testing.T) {
 			expected: `{"root":{"key":"value","dev":{"test":{"sub1":{"key":"value"},"sub2":{"key":"value"}}},"prod":{"test":{"sub1":{"key":"value"},"sub2":{"key":"value"}}}}}`,
 		},
 
-		/* 	== config.special.txt ==
+		/* 	== config.special.fig ==
 		# Wut does this mean??
 		# special_case_root_key: This key will not be in the same level as dev and production keys
 
@@ -48,7 +48,7 @@ func TestJsonMarshalCases(t *testing.T) {
 		*/
 		// Maybe do something to ensure determinism here
 		MarshalJSONTestCase{
-			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" #include "files/config.special.txt"`,
+			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" #include "files/config.special.fig"`,
 			expected: `{"Rick_Astley":"Never","\\\"":"gonna","\\[":"give","quote_value":"gonna","array_value":"give"}`,
 		},
 	}

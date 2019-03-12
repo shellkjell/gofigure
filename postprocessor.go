@@ -429,11 +429,12 @@ func (c *CONFIG) parseIncludesAndAppendToConfig() (ret *CONFIG) {
 	ret = &CONFIG{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
-	for i := 0; i < len(ret.Entries); i++ {
+	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {
 		entry := c.Entries[i]
 
 		if entry.Include == nil {
-			ret.Entries[i] = entry
+			ret.Entries[newEntriesIndex] = entry
+			newEntriesIndex++
 			continue
 		}
 
@@ -453,10 +454,11 @@ func (c *CONFIG) parseIncludesAndAppendToConfig() (ret *CONFIG) {
 
 		// Append new entries in main config and remove the include entry
 		for _, newConfig := range newConfigList {
-			newEntryList := append(ret.Entries[:i], newConfig.Entries...)
-			newEntryList = append(newEntryList, ret.Entries[i+1:]...)
+			newEntryList := append(ret.Entries[:newEntriesIndex], newConfig.Entries...)
+			newEntryList = append(newEntryList, ret.Entries[newEntriesIndex+1:]...)
 
 			ret.Entries = newEntryList
+			newEntriesIndex += len(newConfig.Entries)
 		}
 	}
 
