@@ -37,9 +37,9 @@ type CONFIG struct {
 }
 
 type Entry struct {
-	Include *Include     `@@`
-	Field   *Field       `| @@`
-	Section *SectionRoot `| @@`
+	Include *Include `@@`
+	Field   *Field   `| @@`
+	Section *Section `| "[" @@ (SectionEnd|EOF)?`
 
 	Pos lexer.Position
 }
@@ -55,18 +55,21 @@ type Include struct {
 	they have to be separate structres.
 */
 
+type Section struct {
+	Roots  []SectionRoot `(@@)+ "]"`
+	Fields []*Field      `(@@)*`
+}
+
 type SectionRoot struct {
-	Identifier *string       `"[" @(Ident|ExpansionMacro)`
-	Child      *SectionChild `(@@`
-	Fields     []*Field      `|"]") (@@)* (SectionEnd|EOF)?`
+	Identifier *string       `@(Ident|ExpansionMacro)`
+	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
 }
 
 type SectionChild struct {
 	Identifier *string       `"." @(Ident|ExpansionMacro)`
-	Child      *SectionChild `(@@`
-	Fields     []*Field      `|"]") (@@)* (SectionEnd|EOF)?`
+	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
 }
@@ -132,7 +135,7 @@ func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 }
 
 func isValidExpansionMacro(str string) bool {
-	re := regexp.MustCompile("^.?%{[\\w_]+(,[\\w_]+)*?}.?$") // Permissive
+	re := regexp.MustCompile("^.?%{[\\w_]+((,| )[\\w_]+)*?}.?$") // Permissive
 	indices := re.FindAllStringIndex(str, -1)
 
 	if indices != nil && indices[0][0] == 0 && indices[0][1] == len(str) {
@@ -143,17 +146,25 @@ func isValidExpansionMacro(str string) bool {
 	return false
 }
 
-func splitIdentifiers(identStr string) (idents []string) {
-	if len(identStr) > 0 && identStr[:1][0] == '.' { // Remove leading dot
-		identStr = identStr[1:]
-	}
-
-	return strings.Split(identStr, ".")
-}
-
 func splitExpansionMacro(macroStr string) []string {
+	var macroParts []string
+
 	if isValidExpansionMacro(macroStr) {
-		return strings.Split(macroStr[2:len(macroStr)-1], ",") // Remove leading "%{" and trailing "}" and then split string at comma
+		macroParts = strings.Split(macroStr[2:len(macroStr)-1], ",") // Remove leading "%{" and trailing "}" and then split string at comma
+
+		for i, macroPart := range macroParts {
+			macroPartParts := strings.Split(macroPart, " ")
+
+			// Remove this entry and replace with new parts
+			if len(macroPartParts) != 1 {
+				firstSlice := macroParts[:i]
+				lastSlice := macroParts[i+1:]
+
+				macroParts = append(firstSlice, macroPartParts...)
+				macroParts = append(macroParts, lastSlice...)
+			}
+		}
 	}
+
 	return []string{macroStr}
 }

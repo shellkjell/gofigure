@@ -4,10 +4,11 @@ import (
 	"errors"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 func lookupIdentifierInRoot(multiKeyName *string, root map[string]interface{}) (interface{}, error) {
-	keyNames := splitIdentifiers(*multiKeyName)
+	keyNames := strings.Split(*multiKeyName, ".")
 
 	var currRoot interface{}
 	currRoot = root
@@ -235,30 +236,27 @@ type expansionSection struct {
 	Fields []*Field
 }
 
-func transformToExpansionSection(sectRoot SectionRoot) (retVal expansionSection) {
-	currSect := sectRoot.Child
-	retVal.Rest = append(retVal.Rest, *sectRoot.Identifier)
+func transformToExpansionSection(sect Section) (retVal []expansionSection) {
+	for _, sectRoot := range sect.Roots {
+		currSect := sectRoot.Child
+		ret := expansionSection{}
+		ret.Rest = append(ret.Rest, *sectRoot.Identifier)
 
-	if sectRoot.Fields != nil {
-		retVal.Fields = sectRoot.Fields
-		return
-	}
+		for currSect != nil {
+			ret.Rest = append(ret.Rest, *currSect.Identifier)
 
-	for currSect != nil {
-		retVal.Rest = append(retVal.Rest, *currSect.Identifier)
-
-		if currSect.Fields != nil {
-			retVal.Fields = currSect.Fields
-			break
+			currSect = currSect.Child
 		}
 
-		currSect = currSect.Child
+		retVal = append(retVal, ret)
 	}
 
 	return
 }
 
-func transformSectionToSectionRoot(expandedSects []expansionSection) (retVal []SectionRoot) {
+func transformSectionToSectionRoot(expandedSects []expansionSection) (retVal Section) {
+	retVal = Section{}
+
 	for _, expandedSect := range expandedSects {
 		nwRootName := expandedSect.Prefix[0]
 		newSectRoot := SectionRoot{Identifier: &nwRootName}
@@ -266,8 +264,7 @@ func transformSectionToSectionRoot(expandedSects []expansionSection) (retVal []S
 		if len(expandedSect.Prefix) > 1 {
 			newSectRoot.Child = &SectionChild{}
 		} else {
-			newSectRoot.Fields = expandedSect.Fields
-			retVal = append(retVal, newSectRoot)
+			retVal.Roots = append(retVal.Roots, newSectRoot)
 			continue
 		}
 
@@ -283,19 +280,22 @@ func transformSectionToSectionRoot(expandedSects []expansionSection) (retVal []S
 			}
 		}
 
-		currSectChild.Fields = expandedSect.Fields
-		retVal = append(retVal, newSectRoot)
+		retVal.Roots = append(retVal.Roots, newSectRoot)
 	}
 
 	return
 }
 
-func expand(sectRoot SectionRoot) (retVal []SectionRoot) {
-	nwExpSect := transformToExpansionSection(sectRoot)
+func expand(sect Section) Section {
+	nwExpSect := transformToExpansionSection(sect)
 
-	expanded := _expandInternal([]expansionSection{nwExpSect}, []expansionSection{})
+	expanded := _expandInternal(nwExpSect, []expansionSection{})
 
-	return transformSectionToSectionRoot(expanded)
+	nwSectRoot := transformSectionToSectionRoot(expanded)
+
+	nwSectRoot.Fields = sect.Fields
+
+	return nwSectRoot
 }
 
 func _expandInternal(toProcess, result []expansionSection) (retVal []expansionSection) {
@@ -366,11 +366,11 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 
 		section := entry.Section
 
-		newSections := expand(*section)
+		newSection := expand(*section)
 
 		newEntries := []*Entry{}
 
-		for _, nwSection := range newSections {
+		for _, nwSection := range newSection.Roots {
 			// expand all sections to values
 			childSection := nwSection.Child
 
@@ -378,8 +378,8 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 			currField := rootField
 
 			if childSection == nil {
-				if len(nwSection.Fields) != 0 {
-					rootField.Value = &Value{Map: nwSection.Fields}
+				if len(newSection.Fields) != 0 {
+					rootField.Value = &Value{Map: newSection.Fields}
 				}
 
 				newEntries = append(newEntries, &Entry{Field: rootField})
@@ -398,7 +398,7 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 
 			// Make a new value for the field
 			newValue := &Value{}
-			newValue.Map = childSection.Fields
+			newValue.Map = newSection.Fields
 
 			currField.Value = newValue
 

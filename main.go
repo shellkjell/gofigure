@@ -37,8 +37,6 @@ func main() {
 
 	config := ParseFile(inFile, nil)
 
-	// repr.Println(config, repr.Indent("  "), repr.OmitEmpty(true))
-
 	mapped := config.Transform()
 
 	marshaled, err := json.Marshal(mapped)
