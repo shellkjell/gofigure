@@ -15,12 +15,6 @@ import (
 // 3. a string of characters
 var re_valid_ident_part = `(\\.|@|[a-zA-Z_][a-zA-Z\d_]+)`
 
-var re_valid_expansion_macro = `%{(` + re_valid_ident_part + `( |,)?)*}`
-
-// A valid identifier can be one or more valid identpart,
-// any one of them can be enclosed within the magic macro triggers, "%{" and "}"
-var re_valid_section_identifier = `(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `)(\.(` + re_valid_ident_part + `|` + re_valid_expansion_macro + `))*`
-
 var PutinLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
 		`(\s+)` +
