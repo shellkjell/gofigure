@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"regexp"
 	"strings"
 
 	"github.com/alecthomas/participle"
@@ -23,7 +22,6 @@ var PutinLexer = lexer.Must(lexer.Regexp(
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
 		`|(?P<Ident>` + re_valid_ident_part + `)` +
-		`|(?P<ExpansionMacro>%{([[:alpha:]_][[:alpha:]\d_]+,?)+})` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
 		`|(?P<SectionEnd>\[\])` +
@@ -61,14 +59,14 @@ type Section struct {
 }
 
 type SectionRoot struct {
-	Identifier *string       `@(Ident|ExpansionMacro)`
+	Identifier []string      `(@Ident | "%" "{" (@Ident (","|" ")?)* "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
 }
 
 type SectionChild struct {
-	Identifier *string       `"." @(Ident|ExpansionMacro)`
+	Identifier []string      `"." (@Ident | "%" "{" (@Ident (","|" ")?)* "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
@@ -132,43 +130,4 @@ func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 	checkFileError(err, filename)
 
 	return
-}
-
-func isValidExpansionMacro(str string) bool {
-	re := regexp.MustCompile("^.?%{[\\w_]+((,| )[\\w_]+)*?}.?$") // Permissive
-	indices := re.FindAllStringIndex(str, -1)
-
-	if indices != nil && indices[0][0] == 0 && indices[0][1] == len(str) {
-		// "%" is the first and last value, and they contain stuff
-		return true
-	}
-
-	return false
-}
-
-func splitExpansionMacro(macroStr string) []string {
-	var macroParts []string
-
-	if isValidExpansionMacro(macroStr) {
-		macroParts = strings.Split(macroStr[2:len(macroStr)-1], ",") // Remove leading "%{" and trailing "}" and then split string at comma
-
-		for i, macroPart := range macroParts {
-			macroPartParts := strings.Split(macroPart, " ")
-
-			// Remove this entry and replace with new parts
-			if len(macroPartParts) != 1 {
-				firstSlice := macroParts[:i]
-				lastSlice := macroParts[i+1:]
-
-				macroParts = append(firstSlice, macroPartParts...)
-				macroParts = append(macroParts, lastSlice...)
-			}
-		}
-	}
-
-	if len(macroParts) == 0 {
-		return []string{macroStr}
-	}
-
-	return macroParts
 }
