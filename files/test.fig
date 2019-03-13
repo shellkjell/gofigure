@@ -1,6 +1,6 @@
-#include "files/config.define_roots.txt"
-#include "files/config.define_sub_roots.txt"
-#include "files/config.strings.txt"
+##include "files/config.define_roots.fig"
+##include "files/config.define_sub_roots.fig"
+##include "files/config.strings.fig"
 
 value:"stringvalue"
 
@@ -24,15 +24,18 @@ key3: {
     secondary: value
 }
 
-#value1: "testVal"
-#value2: test.test.value1
+value1: "testVal"
+value2: value1
+
+[test3]
 
 # Array
 key4: [
-    key
-    key
+    test2.value1 # Get variables from other scopes
+    test2.value2
+    key # Look in local scope first, then in global scope
 ]
 
 []
 
-#include "files/config.special.txt"
+##include "files/config.special.fig"
