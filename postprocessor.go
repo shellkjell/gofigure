@@ -230,123 +230,49 @@ func (c *CONFIG) childFieldsToMap() (ret *CONFIG) {
 	return
 }
 
-type expansionSection struct {
-	Prefix []string
-	Rest   []string
-	Fields []*Field
-}
+func (s *SectionChild) expandToFields(setTo []*Field) (retVal []*Field) {
+	var childFields []*Field
 
-func transformToExpansionSection(sect Section) (retVal []expansionSection) {
-	for _, sectRoot := range sect.Roots {
-		currSect := sectRoot.Child
-		ret := expansionSection{}
-		ret.Rest = append(ret.Rest, *sectRoot.Identifier)
-
-		for currSect != nil {
-			ret.Rest = append(ret.Rest, *currSect.Identifier)
-
-			currSect = currSect.Child
-		}
-
-		retVal = append(retVal, ret)
-	}
-
-	return
-}
-
-func transformSectionToSectionRoot(expandedSects []expansionSection) (retVal Section) {
-	retVal = Section{}
-
-	for _, expandedSect := range expandedSects {
-		nwRootName := expandedSect.Prefix[0]
-		newSectRoot := SectionRoot{Identifier: &nwRootName}
-
-		if len(expandedSect.Prefix) > 1 {
-			newSectRoot.Child = &SectionChild{}
-		} else {
-			retVal.Roots = append(retVal.Roots, newSectRoot)
-			continue
-		}
-
-		currSectChild := newSectRoot.Child
-
-		for i := 1; i < len(expandedSect.Prefix); i++ {
-			sectChildName := expandedSect.Prefix[i]
-			currSectChild.Identifier = &sectChildName
-
-			if i != len(expandedSect.Prefix)-1 {
-				currSectChild.Child = &SectionChild{}
-				currSectChild = currSectChild.Child
-			}
-		}
-
-		retVal.Roots = append(retVal.Roots, newSectRoot)
-	}
-
-	return
-}
-
-func expand(sect Section) Section {
-	nwExpSect := transformToExpansionSection(sect)
-
-	expanded := _expandInternal(nwExpSect, []expansionSection{})
-
-	nwSectRoot := transformSectionToSectionRoot(expanded)
-
-	nwSectRoot.Fields = sect.Fields
-
-	return nwSectRoot
-}
-
-func _expandInternal(toProcess, result []expansionSection) (retVal []expansionSection) {
-	if len(toProcess) == 0 {
-		return result
-	}
-
-	first := toProcess[0]
-	rest := toProcess[1:]
-
-	expandedItems := expandSection(first)
-	for _, expandedItem := range expandedItems {
-		if len(expandedItem.Rest) == 0 {
-			result = append(result, expandedItem)
-		} else {
-			rest = append(rest, expandedItem)
-		}
-	}
-
-	return _expandInternal(rest, result)
-}
-
-func expandSection(val expansionSection) (retVal []expansionSection) {
-	if len(val.Rest) != 0 {
-		element := val.Rest[0]
-
-		if isValidExpansionMacro(element) {
-			expansionMacros := splitExpansionMacro(element)
-
-			for _, expansionMacro := range expansionMacros {
-				nwPrefix := make([]string, len(val.Prefix))
-				copy(nwPrefix, val.Prefix)
-
-				nwPrefix = append(nwPrefix, expansionMacro)
-				nwSect := expansionSection{
-					Prefix: nwPrefix,
-					Fields: val.Fields,
-					Rest:   val.Rest[1:],
-				}
-
-				retVal = append(retVal, nwSect)
-			}
-		} else {
-			newSect := expansionSection{Prefix: append(val.Prefix, element), Fields: val.Fields}
-			newSect.Rest = val.Rest[1:]
-			retVal = append(retVal, newSect)
-		}
+	if s.Child != nil {
+		childFields = s.Child.expandToFields(setTo)
 	} else {
-		retVal = append(retVal, val)
+		childFields = setTo
+	}
 
-		return
+	for _, sectName := range s.Identifier {
+		retVal = append(retVal, &Field{Key: sectName, Value: &Value{Map: childFields}})
+	}
+
+	return
+}
+
+func (s *SectionRoot) expandToFields(setTo []*Field) (retVal []*Field) {
+	var childFields []*Field
+
+	hasChildren := s.Child != nil
+
+	if hasChildren {
+		childFields = s.Child.expandToFields(setTo)
+	}
+
+	for _, sectName := range s.Identifier {
+		newField := &Field{Key: sectName, Value: &Value{}}
+
+		if !hasChildren {
+			newField.Value.Map = setTo
+		} else {
+			newField.Value.Map = childFields
+		}
+
+		retVal = append(retVal, newField)
+	}
+
+	return
+}
+
+func (s *Section) expandToFields() (retVal []*Field) {
+	for _, sectRoot := range s.Roots {
+		retVal = append(retVal, sectRoot.expandToFields(s.Fields)...)
 	}
 
 	return
@@ -366,43 +292,11 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 
 		section := entry.Section
 
-		newSection := expand(*section)
+		newFields := section.expandToFields()
+		newEntries := make([]*Entry, len(newFields))
 
-		newEntries := []*Entry{}
-
-		for _, nwSection := range newSection.Roots {
-			// expand all sections to values
-			childSection := nwSection.Child
-
-			rootField := &Field{Key: *nwSection.Identifier, Pos: entry.Pos}
-			currField := rootField
-
-			if childSection == nil {
-				if len(newSection.Fields) != 0 {
-					rootField.Value = &Value{Map: newSection.Fields}
-				}
-
-				newEntries = append(newEntries, &Entry{Field: rootField})
-				continue
-			}
-
-			currField.Value = &Value{Map: []*Field{&Field{Key: *childSection.Identifier, Pos: entry.Pos}}, Pos: entry.Pos}
-			currField = currField.Value.Map[0]
-
-			for childSection.Child != nil {
-				childSection = childSection.Child
-
-				currField.Value = &Value{Map: []*Field{&Field{Key: *childSection.Identifier, Pos: entry.Pos}}, Pos: entry.Pos}
-				currField = currField.Value.Map[0]
-			}
-
-			// Make a new value for the field
-			newValue := &Value{}
-			newValue.Map = newSection.Fields
-
-			currField.Value = newValue
-
-			newEntries = append(newEntries, &Entry{Field: rootField, Pos: entry.Pos})
+		for i, newField := range newFields {
+			newEntries[i] = &Entry{Field: newField}
 		}
 
 		firstSlice := ret.Entries[:newEntriesIndex]
