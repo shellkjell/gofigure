@@ -166,5 +166,9 @@ func splitExpansionMacro(macroStr string) []string {
 		}
 	}
 
-	return []string{macroStr}
+	if len(macroParts) == 0 {
+		return []string{macroStr}
+	}
+
+	return macroParts
 }
