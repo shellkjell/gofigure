@@ -3,27 +3,39 @@ In gofigure, there are a number of features designed to make your life easier.
 
 One of these features is the expansion macro. You can effectively expand roots as children of the root structure, or any other keymap.
 ```
-[root.%{root1,root2}] 
+# Can use both comma and space here
+#            |      |
+#            V      V
+[root.%{root1,root2} root3]
 # The statement above will prefix everything below this up until the file ends 
-# or until the section is left with the "[]" operator, with root.root1. and root.root2. 
+# or until the section is left with the "[]" operator, with root.root1., root.root2. and root3. 
 # (creating a copy for every root within the expansion macro)
 
-key:"value"
+key: [
+  "value",  ; comma if you want
+  "value2"  # or don't
+  "value3"  
+]
+
+; This is also a comment
 
 [] # leave the current section
 
 rootKey: "rootkey"
 ```
-This effectively expands the keys `root1` and `root2` as children of `root` and prefixes everything in that section with those keys as parents. In JSON, it looks like this
+This effectively expands the keys `root1` and `root2` as children of `root`, and `root3` as a separate root. Then it prefixes everything in that section with those keys as parents. In JSON, it looks like this
 ```
 {
   "root": {
     "root1": {
-      "key": "value"
+      "key": ["value", "value2", "value3"]
     },
     "root2": {
-      "key": "value"
+      "key": ["value", "value2", "value3"]
     }
+  },
+  "root3": {
+    "key": ["value", "value2", "value3"]
   },
   "rootKey": "rootkey"
 }
@@ -34,18 +46,21 @@ Say for example we wanted to add something to both root1 and root2 in the above 
 [root.@]
 added: "more value"
 ```
-Both `root1` and `root2` along with any other keys defined as children of `root`, will now contain the added value. For sake of completeness, the JSON will now look like this
+Both `root1` and `root2` along with any other keys (which may be) defined as children of `root`, will now contain the added value. For sake of completeness, the JSON will now look like this
 ```
 {
   "root": {
     "root1": {
-      "key": "value",
-      "added": "more value"
+      "added": "more value",
+      "key": ["value", "value2", "value3"]
     },
     "root2": {
-      "key": "value"
-      "added": "more value"
+      "added": "more value",
+      "key": ["value", "value2", "value3"]
     }
+  },
+  "root3": {
+    "key": ["value", "value2", "value3"]
   },
   "rootKey": "rootkey"
 }
