@@ -59,14 +59,14 @@ type Section struct {
 }
 
 type SectionRoot struct {
-	Identifier []string      `(@Ident | "%" "{" (@Ident (","|" ")?)* "}")`
+	Identifier []string      `(@Ident ("," " "*|" ")? | "%" "{" (@Ident ("," " "*|" ")?)* "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
 }
 
 type SectionChild struct {
-	Identifier []string      `"." (@Ident | "%" "{" (@Ident (","|" ")?)* "}")`
+	Identifier []string      `"." (@Ident ("," " "*|" ")? | "%" "{" (@Ident ("," " "*|" ")?)* "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
