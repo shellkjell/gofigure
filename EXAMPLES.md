@@ -1,6 +1,7 @@
 # Examples
 In gofigure, there are a number of features designed to make your life easier.
 
+### Expansion macros
 One of these features is the expansion macro. You can effectively expand roots as children of the root structure, or any other keymap.
 ```
 # Can use both comma and space here
@@ -40,6 +41,7 @@ This effectively expands the keys `root1` and `root2` as children of `root`, and
   "rootKey": "rootkey"
 }
 ```
+### The @ selector
 Now, if we want to select all children of a parent we can to so by using the `@` operator. The `@` operator is a selector which selects all predefined maps at the given level.
 Say for example we wanted to add something to both root1 and root2 in the above example. We would add to the end of the file
 ```
