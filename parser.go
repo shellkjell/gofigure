@@ -10,14 +10,12 @@ import (
 
 // A valid indentifier part is one of the following:
 // 1. an escaped character, like \"
-// 2. @
-// 3. a string of characters
+// 2. a string of characters
 var re_valid_ident_part = `(\\.|[a-zA-Z_][a-zA-Z\d_]+)`
 
-var PutinLexer = lexer.Must(lexer.Regexp(
+var Lexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
 		`(\s+)` +
-		`|(?P<Include>#include)` +
 		`|([#;].*$)` +
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
@@ -25,6 +23,7 @@ var PutinLexer = lexer.Must(lexer.Regexp(
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
 		`|(?P<SectionEnd>\[\])` +
+		`|(?P<Include>%include)` +
 		`|(?P<Special>[][{},. :%@])`,
 ))
 
@@ -105,7 +104,7 @@ func checkFileError(err error, filename string) {
 func BuildParser() (parser *participle.Parser) {
 	parser, err := participle.Build(
 		&CONFIG{},
-		participle.Lexer(PutinLexer),
+		participle.Lexer(Lexer),
 		participle.Unquote("String"),
 	)
 
