@@ -12,7 +12,7 @@ import (
 // 1. an escaped character, like \"
 // 2. @
 // 3. a string of characters
-var re_valid_ident_part = `(\\.|@|[a-zA-Z_][a-zA-Z\d_]+)`
+var re_valid_ident_part = `(\\.|[a-zA-Z_][a-zA-Z\d_]+)`
 
 var PutinLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
@@ -25,7 +25,7 @@ var PutinLexer = lexer.Must(lexer.Regexp(
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
 		`|(?P<SectionEnd>\[\])` +
-		`|(?P<Punct>[][{},. :%])`,
+		`|(?P<Special>[][{},. :%@])`,
 ))
 
 type CONFIG struct {
@@ -59,14 +59,14 @@ type Section struct {
 }
 
 type SectionRoot struct {
-	Identifier []string      `(@Ident ("," " "*|" ")? | "%" "{" (@Ident ("," " "*|" ")?)* "}")`
+	Identifier []string      `(@(Ident|"@") ("," " "*|" ")? | "%" "{" (@Ident ("," " "*|" ")?)* "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
 }
 
 type SectionChild struct {
-	Identifier []string      `"." (@Ident ("," " "*|" ")? | "%" "{" (@Ident ("," " "*|" ")?)* "}")`
+	Identifier []string      `"." (@(Ident|"@") ("," " "*|" ")? | "%" "{" (@Ident ("," " "*|" ")?)* "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
