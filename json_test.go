@@ -51,6 +51,11 @@ func TestJsonMarshalCases(t *testing.T) {
 			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" #include "files/config.special.fig"`,
 			expected: `{"Rick_Astley":"Never","\\\"":"gonna","\\[":"give","quote_value":"gonna","array_value":"give"}`,
 		},
+
+		MarshalJSONTestCase{
+			data:     `[root, root2 root3] key:"value"`,
+			expected: `{"root":{"key":"value"},"root2":{"key":"value"},"root3":{"key":"value"}}`,
+		},
 	}
 
 	for _, testCase := range testCases {

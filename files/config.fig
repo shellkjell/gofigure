@@ -1,6 +1,6 @@
-###include "files/config.define_roots.txt"
-###include "files/config.define_sub_roots.txt"
-###include "files/config.strings.txt"
+#include "files/config.define_roots.fig"
+#include "files/config.define_sub_roots.fig"
+#include "files/config.strings.fig"
 
 value:"str"
 [test]
@@ -44,4 +44,4 @@ and again'''
 
 \"
 []
-#include "files/config.special.txt"
+#include "files/config.special.fig"

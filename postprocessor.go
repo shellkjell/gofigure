@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-func lookupIdentifierInRoot(multiKeyName *string, root map[string]interface{}) (interface{}, error) {
+func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	keyNames := strings.Split(*multiKeyName, ".")
 
 	var currRoot interface{}
-	currRoot = root
+	currRoot = globalRoot
 	for i, keyName := range keyNames {
 		switch currRoot.(type) {
 		case map[string]interface{}:
@@ -36,6 +36,8 @@ func isValidFinalValue(val interface{}) bool {
 		case *int64:
 		case *float64:
 		case map[string]interface{}:
+		case []interface{}:
+		case identifier:
 			break
 		default:
 			return false
@@ -51,29 +53,53 @@ func checkConfigError(err error, v *Value) {
 	}
 }
 
-func (v *Value) toFinalValue(root map[string]interface{}) (ret interface{}) {
-	if v.Identifier != nil { // First look in local scope
-		valAtIdent, err := lookupIdentifierInRoot(v.Identifier, root)
+var currPrefix string
 
-		if err != nil && &root != &globalRoot { // If not in local scope then look in global scope
-			valAtIdent, err = lookupIdentifierInRoot(v.Identifier, globalRoot)
+func reverseIdentifiers(v *interface{}) {
+	switch (*v).(type) {
+	case map[string]interface{}:
+		for key, value := range (*v).(map[string]interface{}) {
+			currPrefixAddition := "." + key
+
+			currPrefix += currPrefixAddition
+
+			reverseIdentifiers(&value)
+
+			currPrefix = string(currPrefix[:len(currPrefix)-len(currPrefixAddition)])
 		}
 
-		checkConfigError(err, v)
-
-		if !isValidFinalValue(valAtIdent) {
-			panic("Value at identifier \"" + *v.Identifier + "\" is not a valid value")
+		break
+	case []interface{}:
+		for _, element := range (*v).([]interface{}) {
+			reverseIdentifiers(&element)
 		}
 
-		ret = valAtIdent
+		break
+	case identifier:
+		val, err := lookupIdentifierInRoot((*v).(identifier).name)
+
+		check(err)
+
+		*v = val
+		break
+	}
+}
+
+type identifier struct {
+	name *string
+}
+
+func (v *Value) toFinalValue() (ret interface{}) {
+	if v.Identifier != nil {
+		ret = &identifier{v.Identifier}
 	} else if v.Map != nil {
 		nwMap := map[string]interface{}{}
-		// expand roots?
+
 		for _, field := range v.Map {
 			if field.Value == nil {
 				delete(nwMap, field.Key)
 			} else {
-				nwMap[field.Key] = field.Value.toFinalValue(nwMap)
+				nwMap[field.Key] = field.Value.toFinalValue()
 			}
 		}
 
@@ -81,7 +107,7 @@ func (v *Value) toFinalValue(root map[string]interface{}) (ret interface{}) {
 	} else if v.List != nil {
 		nwList := make([]interface{}, len(v.List), len(v.List))
 		for i, val := range v.List {
-			nwList[i] = val.toFinalValue(root)
+			nwList[i] = val.toFinalValue()
 		}
 
 		ret = nwList
@@ -138,13 +164,125 @@ func mergeMapsOfInterface(dst, src map[string]interface{}) {
 	}
 }
 
+func findIdentifierInMap(identifier *string, fields []*Field) (*Value, error) {
+	for _, field := range fields {
+		value := field.Value
+
+		if field.Key == *identifier {
+			return value, nil
+		}
+	}
+
+	return nil, errors.New("No key called " + *identifier + " exists.")
+}
+
+func findIdentifierInConfig(identifier *string, root *CONFIG) (*Value, error) {
+	identParts := strings.Split(*identifier, ".")
+
+	for _, entry := range root.Entries {
+		field := entry.Field
+		value := field.Value
+
+		if len(identParts) == 1 {
+			if field.Key == identParts[0] {
+				return value, nil
+			}
+
+			continue
+		} else if value == nil {
+			continue
+		}
+
+		if field.Key == identParts[0] && value.Map != nil {
+			var v *Value
+			var err error
+
+			for i := 1; i < len(identParts); i++ {
+				v, err = findIdentifierInMap(&identParts[i], value.Map)
+
+				check(err)
+
+				value = v
+			}
+
+			return value, nil
+		}
+	}
+
+	return nil, errors.New("No key called " + *identifier + " exists.")
+}
+
+func reverseIdentifiersInList(values []*Value, root *CONFIG) {
+	for i, value := range values {
+		if value.Map != nil {
+			reverseIdentifiersInMap(value.Map, root)
+		} else if value.List != nil {
+			reverseIdentifiersInList(value.List, root)
+		} else if value.Identifier != nil {
+			identVal, err := findIdentifierInConfig(value.Identifier, root)
+			check(err)
+
+			values[i] = identVal
+		}
+	}
+}
+
+func reverseIdentifiersInMap(fields []*Field, root *CONFIG) {
+	for _, field := range fields {
+		val := field.Value
+
+		if val == nil {
+			continue
+		}
+
+		if val.Map != nil {
+			reverseIdentifiersInMap(val.Map, root)
+		} else if val.List != nil {
+			reverseIdentifiersInList(val.List, root)
+		} else if val.Identifier != nil {
+			identVal, err := findIdentifierInConfig(val.Identifier, root)
+			check(err)
+
+			field.Value = identVal
+		}
+	}
+}
+
+func (c *CONFIG) reverseIdentifiers() {
+	for i, entry := range c.Entries {
+		field := entry.Field
+
+		if field.Value == nil {
+			continue
+		}
+
+		// Only look at entries up until this point when searching for identifiers
+		tmpConfig := &CONFIG{Entries: c.Entries[:i+1]}
+
+		if field.Value.Map != nil {
+			reverseIdentifiersInMap(field.Value.Map, tmpConfig)
+		} else if field.Value.List != nil {
+			reverseIdentifiersInList(field.Value.List, tmpConfig)
+		} else if field.Value.Identifier != nil {
+			identVal, err := findIdentifierInConfig(field.Value.Identifier, tmpConfig)
+			check(err)
+
+			field.Value = identVal
+		}
+	}
+}
+
 // Transform - Takes a freshly parsed config file and transforms it to a map
 func (c *CONFIG) Transform() map[string]interface{} {
 	c = c.parseIncludesAndAppendToConfig()
 	c = c.explodeSectionsToFields()
 	c = c.childFieldsToMap()
 
-	return c.toMap()
+	c.reverseIdentifiers()
+
+	mapped := c.toMap()
+
+	return mapped
 }
 
 var globalRoot map[string]interface{}
@@ -160,7 +298,7 @@ func (c *CONFIG) toMap() (ret map[string]interface{}) {
 		var finalValue interface{}
 
 		if value != nil {
-			finalValue = value.toFinalValue(ret)
+			finalValue = value.toFinalValue()
 		}
 
 		// Top level selection of all roots
