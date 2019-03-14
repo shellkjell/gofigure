@@ -89,8 +89,8 @@ type Value struct {
 	MultilineString *UnprocessedString `| @@`
 	Integer         *int64             `| @Int`
 	Float           *float64           `| @Float`
-	List            []*Value           `| "[" ((@@)*)? "]"`
-	Map             []*Field           `| "{" ((@@)*)? "}"`
+	List            []*Value           `| "[" ((@@ ","?)* )? "]"`
+	Map             []*Field           `| "{" ((@@ ","?)* )? "}"`
 	Identifier      *string            `| @Ident @("." Ident)*`
 
 	Pos lexer.Position
