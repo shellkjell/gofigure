@@ -1,7 +1,7 @@
 # Examples
 In gofigure, there are a number of features designed to make your life easier.
 
-### Expansion macros
+### Expansion macro
 One of these features is the expansion macro. You can effectively expand roots as children of the root structure, or any other keymap.
 ```
 # Can use both comma and space here

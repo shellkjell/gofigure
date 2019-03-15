@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/alecthomas/participle"
@@ -13,7 +13,7 @@ import (
 // 2. a string of characters
 var re_valid_ident_part = `(\\.|[a-zA-Z_][a-zA-Z\d_]+)`
 
-var Lexer = lexer.Must(lexer.Regexp(
+var GoFigureLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
 		`(\s+)` +
 		`|([#;].*$)` +
@@ -29,6 +29,8 @@ var Lexer = lexer.Must(lexer.Regexp(
 
 type CONFIG struct {
 	Entries []*Entry `(@@)*`
+
+	Pos lexer.Position
 }
 
 type Entry struct {
@@ -99,15 +101,16 @@ type Value struct {
 
 func checkFileError(err error, filename string) {
 	if err != nil {
-		panic(strings.Replace(err.Error(), "<source>", filename, -1))
+		panic(strings.Replace(err.Error(), "<source>", filename, 1))
 	}
 }
 
 func BuildParser() (parser *participle.Parser) {
 	parser, err := participle.Build(
 		&CONFIG{},
-		participle.Lexer(Lexer),
+		participle.Lexer(GoFigureLexer),
 		participle.Unquote("String"),
+		participle.UseLookahead(2),
 	)
 
 	check(err)
@@ -121,13 +124,15 @@ func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
 		parser = BuildParser()
 	}
 
-	// Read file
-	data, err := ioutil.ReadFile(filename)
-	check(err)
-	dataString := string(data)
+	// Open a handle to file
+	file, err := os.Open(filename)
 
-	// Parse the config
-	err = parser.ParseString(dataString, config)
+	check(err)
+
+	err = parser.Parse(file, config)
+
+	check(file.Close())
+
 	checkFileError(err, filename)
 
 	return

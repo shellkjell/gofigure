@@ -272,7 +272,7 @@ func (c *CONFIG) reverseIdentifiers() {
 	}
 }
 
-// Transform - Takes a freshly parsed config file and transforms it to a map
+// Transform - Takes a parsed and lexed config file and transforms it to a map
 func (c *CONFIG) Transform() map[string]interface{} {
 	c = c.parseIncludesAndAppendToConfig()
 	c = c.explodeSectionsToFields()
