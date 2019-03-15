@@ -48,7 +48,7 @@ func TestJsonMarshalCases(t *testing.T) {
 		*/
 		// Maybe do something to ensure determinism here
 		MarshalJSONTestCase{
-			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" #include "files/config.special.fig"`,
+			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" %include "files/config.special.fig"`,
 			expected: `{"Rick_Astley":"Never","\\\"":"gonna","\\[":"give","quote_value":"gonna","array_value":"give"}`,
 		},
 

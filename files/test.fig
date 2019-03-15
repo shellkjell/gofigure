@@ -1,6 +1,6 @@
-#include "files/config.define_roots.fig"
-#include "files/config.define_sub_roots.fig"
-#include "files/config.strings.fig"
+%include "files/config.define_roots.fig"
+%include "files/config.define_sub_roots.fig"
+%include "files/config.strings.fig"
 
 value:"stringvalue"
 
@@ -25,7 +25,7 @@ key3: {
 }
 
 value1: "testVal"
-value2: value1
+value2: root1.root2.value1
 
 [test3]
 
@@ -38,4 +38,4 @@ key4: [
 
 []
 
-##include "files/config.special.fig"
+%include "files/config.special.fig"

@@ -29,8 +29,6 @@ var Lexer = lexer.Must(lexer.Regexp(
 
 type CONFIG struct {
 	Entries []*Entry `(@@)*`
-
-	Pos lexer.Position
 }
 
 type Entry struct {
@@ -42,7 +40,7 @@ type Entry struct {
 }
 
 type Include struct {
-	Includes []string `"#include" @String (","? @String)*`
+	Includes []string `"%include" @String (","? @String)*`
 
 	Pos lexer.Position
 }
@@ -55,6 +53,8 @@ type Include struct {
 type Section struct {
 	Roots  []SectionRoot `(@@)+ "]"`
 	Fields []*Field      `(@@)*`
+
+	Pos lexer.Position
 }
 
 type SectionRoot struct {
@@ -81,6 +81,8 @@ type Field struct {
 
 type UnprocessedString struct {
 	String *string `@MLString`
+
+	Pos lexer.Position
 }
 
 type Value struct {
