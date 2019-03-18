@@ -13,6 +13,7 @@ import (
 // 2. a string of characters
 var re_valid_ident_part = `(\\.|[a-zA-Z_][a-zA-Z\d_]+)`
 
+// GoFigureLexer - Contains the lexicographic rules for how gofigure is parsed
 var GoFigureLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
 		`(\s+)` +
@@ -27,6 +28,7 @@ var GoFigureLexer = lexer.Must(lexer.Regexp(
 		`|(?P<Special>[][{},. :%@])`,
 ))
 
+// FigureConfig - Structure capable of containing a full GoFigure configuration
 type FigureConfig struct {
 	Entries []*Entry `(@@)*`
 

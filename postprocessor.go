@@ -1,11 +1,28 @@
 package main
 
 import (
+	"C"
 	"errors"
 	"regexp"
 	"strconv"
 	"strings"
 )
+import "encoding/json"
+
+// This function is for the shared library
+//export cParseFileAndProcess
+func cParseFileAndProcess(filename string) (jsonified string) {
+	parser := BuildParser()
+
+	cnf := ParseFile(filename, parser)
+	marshaled, err := json.Marshal(cnf.Transform())
+
+	check(err)
+
+	jsonified = string(marshaled)
+
+	return
+}
 
 func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	keyNames := strings.Split(*multiKeyName, ".")
