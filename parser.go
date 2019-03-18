@@ -27,7 +27,7 @@ var GoFigureLexer = lexer.Must(lexer.Regexp(
 		`|(?P<Special>[][{},. :%@])`,
 ))
 
-type CONFIG struct {
+type FigureConfig struct {
 	Entries []*Entry `(@@)*`
 
 	Pos lexer.Position
@@ -105,12 +105,12 @@ func checkFileError(err error, filename string) {
 	}
 }
 
+// BuildParser - Builds a new parser with GoFigureLexer as lexer
 func BuildParser() (parser *participle.Parser) {
 	parser, err := participle.Build(
-		&CONFIG{},
+		&FigureConfig{},
 		participle.Lexer(GoFigureLexer),
 		participle.Unquote("String"),
-		participle.UseLookahead(2),
 	)
 
 	check(err)
@@ -118,8 +118,9 @@ func BuildParser() (parser *participle.Parser) {
 	return
 }
 
-func ParseFile(filename string, parser *participle.Parser) (config *CONFIG) {
-	config = &CONFIG{}
+// ParseFile - Parses a file with given filename and parser. If a nil argument is passed instead of a parser a new one is built
+func ParseFile(filename string, parser *participle.Parser) (config *FigureConfig) {
+	config = &FigureConfig{}
 	if parser == nil {
 		parser = BuildParser()
 	}

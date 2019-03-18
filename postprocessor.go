@@ -176,7 +176,7 @@ func findIdentifierInMap(identifier *string, fields []*Field) (*Value, error) {
 	return nil, errors.New("No key called " + *identifier + " exists.")
 }
 
-func findIdentifierInConfig(identifier *string, root *CONFIG) (*Value, error) {
+func findIdentifierInConfig(identifier *string, root *FigureConfig) (*Value, error) {
 	identParts := strings.Split(*identifier, ".")
 
 	for _, entry := range root.Entries {
@@ -212,7 +212,7 @@ func findIdentifierInConfig(identifier *string, root *CONFIG) (*Value, error) {
 	return nil, errors.New("No key called " + *identifier + " exists.")
 }
 
-func reverseIdentifiersInList(values []*Value, root *CONFIG) {
+func reverseIdentifiersInList(values []*Value, root *FigureConfig) {
 	for i, value := range values {
 		if value.Map != nil {
 			reverseIdentifiersInMap(value.Map, root)
@@ -227,7 +227,7 @@ func reverseIdentifiersInList(values []*Value, root *CONFIG) {
 	}
 }
 
-func reverseIdentifiersInMap(fields []*Field, root *CONFIG) {
+func reverseIdentifiersInMap(fields []*Field, root *FigureConfig) {
 	for _, field := range fields {
 		val := field.Value
 
@@ -248,7 +248,7 @@ func reverseIdentifiersInMap(fields []*Field, root *CONFIG) {
 	}
 }
 
-func (c *CONFIG) reverseIdentifiers() {
+func (c *FigureConfig) reverseIdentifiers() {
 	for i, entry := range c.Entries {
 		field := entry.Field
 
@@ -257,7 +257,7 @@ func (c *CONFIG) reverseIdentifiers() {
 		}
 
 		// Only look at entries up until this point when searching for identifiers
-		tmpConfig := &CONFIG{Entries: c.Entries[:i+1]}
+		tmpConfig := &FigureConfig{Entries: c.Entries[:i+1]}
 
 		if field.Value.Map != nil {
 			reverseIdentifiersInMap(field.Value.Map, tmpConfig)
@@ -273,7 +273,7 @@ func (c *CONFIG) reverseIdentifiers() {
 }
 
 // Transform - Takes a parsed and lexed config file and transforms it to a map
-func (c *CONFIG) Transform() map[string]interface{} {
+func (c *FigureConfig) Transform() map[string]interface{} {
 	c = c.parseIncludesAndAppendToConfig()
 	c = c.explodeSectionsToFields()
 	c = c.childFieldsToMap()
@@ -287,7 +287,7 @@ func (c *CONFIG) Transform() map[string]interface{} {
 
 var globalRoot map[string]interface{}
 
-func (c *CONFIG) toMap() (ret map[string]interface{}) {
+func (c *FigureConfig) toMap() (ret map[string]interface{}) {
 	ret = map[string]interface{}{}
 	globalRoot = ret
 
@@ -345,8 +345,8 @@ func (c *CONFIG) toMap() (ret map[string]interface{}) {
 	return
 }
 
-func (c *CONFIG) childFieldsToMap() (ret *CONFIG) {
-	ret = &CONFIG{}
+func (c *FigureConfig) childFieldsToMap() (ret *FigureConfig) {
+	ret = &FigureConfig{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, entry := range c.Entries {
@@ -416,8 +416,8 @@ func (s *Section) expandToFields() (retVal []*Field) {
 	return
 }
 
-func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
-	ret = &CONFIG{}
+func (c *FigureConfig) explodeSectionsToFields() (ret *FigureConfig) {
+	ret = &FigureConfig{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {
@@ -453,8 +453,8 @@ func (c *CONFIG) explodeSectionsToFields() (ret *CONFIG) {
 	return
 }
 
-func (c *CONFIG) parseIncludesAndAppendToConfig() (ret *CONFIG) {
-	ret = &CONFIG{}
+func (c *FigureConfig) parseIncludesAndAppendToConfig() (ret *FigureConfig) {
+	ret = &FigureConfig{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {
@@ -467,7 +467,7 @@ func (c *CONFIG) parseIncludesAndAppendToConfig() (ret *CONFIG) {
 		}
 
 		include := entry.Include
-		newConfigList := make([]*CONFIG, len(include.Includes))
+		newConfigList := make([]*FigureConfig, len(include.Includes))
 
 		parser := BuildParser()
 

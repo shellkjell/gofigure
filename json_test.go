@@ -59,7 +59,7 @@ func TestJsonMarshalCases(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		config := &CONFIG{}
+		config := &FigureConfig{}
 
 		parser.ParseString(testCase.data, config)
 
