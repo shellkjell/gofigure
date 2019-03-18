@@ -74,3 +74,16 @@ Both `root1` and `root2` along with any other keys (which may be) defined as chi
   "rootKey": "rootkey"
 }
 ```
+
+### Includes
+We don't want to keep all configurations in the same file when they grow above a certain size. Enter, the %include keyword. If we have a file containing what we have below, named `firstFile.fig`
+```
+key: "value"
+```
+And we don't want to have to rewrite everything in that file. Let's just include it in the next file.
+```
+%include "firstFile.fig"
+key2: "value"
+```
+Now, parsing this next file shall output the key configuration from both files, in positionally correct order. Namely if we overwrite something which would be inside the first include file in the second one, it simply gets overwritten as if they had been the same file, or merged if they are what will be an object in JSON. This is useful for concatenating larger configurations which may get used in several different places.
+
