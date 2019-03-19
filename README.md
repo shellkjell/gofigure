@@ -77,13 +77,22 @@ gofigure can be run
 
 ### Installing
 
+#### Linux
+```
+# Get the latest release and download
+curl -O $(curl -s https://api.github.com/repos/techbuddyab/gofigure/releases/latest | grep 'browser_' | cut -d\" -f4)
+chmod +x ./gofigure
+mv ./gofigure /usr/bin
+```
+
+#### Building
 ```
 git clone git@github.com:techbuddyab/gofigure
 ```
 
 Now, you can choose to build and run the software locally or with docker.
 
-#### Local
+#### Local build
 ```
 # build with local go installation - binary in project root
 make build-local
@@ -93,7 +102,7 @@ make run-local
 
 Upon which you will have a built binary in the project root folder.
 
-#### Docker
+#### Docker build
 The docker way has the same end result as the local build
 
 ```
