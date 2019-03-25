@@ -1,9 +1,9 @@
 package main
 
 import (
-	//"C"
+	"C"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,7 +11,7 @@ import (
 
 // This function is for the shared library
 //export cParseFileAndProcess
-/*func cParseFileAndProcess(filename string) (jsonified string) {
+func cParseFileAndProcess(filename string) (jsonified string) {
 	parser := BuildParser()
 
 	cnf := ParseFile(filename, parser)
@@ -22,7 +22,7 @@ import (
 	jsonified = string(marshaled)
 
 	return
-}*/
+}
 
 func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	keyNames := strings.Split(*multiKeyName, ".")
@@ -296,10 +296,6 @@ func (c FigureConfig) toMap() (ret map[string]interface{}) {
 	for _, entry := range c.Entries {
 		field := entry.Field
 		value := field.Value
-
-		if field.Key == "key1" {
-			fmt.Print("test")
-		}
 
 		var finalValue interface{}
 
