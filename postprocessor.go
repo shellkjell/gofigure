@@ -1,17 +1,17 @@
 package main
 
 import (
-	"C"
+	//"C"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 )
-import "encoding/json"
 
 // This function is for the shared library
 //export cParseFileAndProcess
-func cParseFileAndProcess(filename string) (jsonified string) {
+/*func cParseFileAndProcess(filename string) (jsonified string) {
 	parser := BuildParser()
 
 	cnf := ParseFile(filename, parser)
@@ -22,7 +22,7 @@ func cParseFileAndProcess(filename string) (jsonified string) {
 	jsonified = string(marshaled)
 
 	return
-}
+}*/
 
 func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	keyNames := strings.Split(*multiKeyName, ".")
@@ -44,24 +44,6 @@ func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	}
 
 	return currRoot, nil
-}
-
-func isValidFinalValue(val interface{}) bool {
-	if val != nil { // nil value is always valid
-		switch val.(type) {
-		case *string:
-		case *int64:
-		case *float64:
-		case map[string]interface{}:
-		case []interface{}:
-		case identifier:
-			break
-		default:
-			return false
-		}
-	}
-
-	return true
 }
 
 func checkConfigError(err error, v *Value) {
@@ -134,6 +116,9 @@ func (v *Value) toFinalValue() (ret interface{}) {
 		ret = v.Integer
 	} else if v.String != nil {
 		ret = v.String
+	} else { // Has to be empty map
+		// todo: include flag for omitting empty values?
+		ret = map[string]interface{}{}
 	}
 
 	return
@@ -265,7 +250,7 @@ func reverseIdentifiersInMap(fields []*Field, root *FigureConfig) {
 	}
 }
 
-func (c *FigureConfig) reverseIdentifiers() {
+func (c FigureConfig) reverseIdentifiers() {
 	for i, entry := range c.Entries {
 		field := entry.Field
 
@@ -290,7 +275,7 @@ func (c *FigureConfig) reverseIdentifiers() {
 }
 
 // Transform - Takes a parsed and lexed config file and transforms it to a map
-func (c *FigureConfig) Transform() map[string]interface{} {
+func (c FigureConfig) Transform() map[string]interface{} {
 	c = c.parseIncludesAndAppendToConfig()
 	c = c.explodeSectionsToFields()
 	c = c.childFieldsToMap()
@@ -304,13 +289,17 @@ func (c *FigureConfig) Transform() map[string]interface{} {
 
 var globalRoot map[string]interface{}
 
-func (c *FigureConfig) toMap() (ret map[string]interface{}) {
+func (c FigureConfig) toMap() (ret map[string]interface{}) {
 	ret = map[string]interface{}{}
 	globalRoot = ret
 
 	for _, entry := range c.Entries {
 		field := entry.Field
 		value := field.Value
+
+		if field.Key == "key1" {
+			fmt.Print("test")
+		}
 
 		var finalValue interface{}
 
@@ -352,18 +341,11 @@ func (c *FigureConfig) toMap() (ret map[string]interface{}) {
 		}
 	}
 
-	// Remove empty keys
-	for key, val := range ret {
-		if val == nil {
-			delete(ret, key)
-		}
-	}
-
 	return
 }
 
-func (c *FigureConfig) childFieldsToMap() (ret *FigureConfig) {
-	ret = &FigureConfig{}
+func (c FigureConfig) childFieldsToMap() (ret FigureConfig) {
+	ret = FigureConfig{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, entry := range c.Entries {
@@ -433,8 +415,8 @@ func (s *Section) expandToFields() (retVal []*Field) {
 	return
 }
 
-func (c *FigureConfig) explodeSectionsToFields() (ret *FigureConfig) {
-	ret = &FigureConfig{}
+func (c FigureConfig) explodeSectionsToFields() (ret FigureConfig) {
+	ret = FigureConfig{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {
@@ -470,8 +452,8 @@ func (c *FigureConfig) explodeSectionsToFields() (ret *FigureConfig) {
 	return
 }
 
-func (c *FigureConfig) parseIncludesAndAppendToConfig() (ret *FigureConfig) {
-	ret = &FigureConfig{}
+func (c FigureConfig) parseIncludesAndAppendToConfig() (ret FigureConfig) {
+	ret = FigureConfig{}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {
@@ -484,7 +466,7 @@ func (c *FigureConfig) parseIncludesAndAppendToConfig() (ret *FigureConfig) {
 		}
 
 		include := entry.Include
-		newConfigList := make([]*FigureConfig, len(include.Includes))
+		newConfigList := make([]FigureConfig, len(include.Includes))
 
 		parser := BuildParser()
 

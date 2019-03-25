@@ -121,8 +121,8 @@ func BuildParser() (parser *participle.Parser) {
 }
 
 // ParseFile - Parses a file with given filename and parser. If a nil argument is passed instead of a parser a new one is built
-func ParseFile(filename string, parser *participle.Parser) (config *FigureConfig) {
-	config = &FigureConfig{}
+func ParseFile(filename string, parser *participle.Parser) (config FigureConfig) {
+	config = FigureConfig{}
 	if parser == nil {
 		parser = BuildParser()
 	}
@@ -132,7 +132,7 @@ func ParseFile(filename string, parser *participle.Parser) (config *FigureConfig
 
 	check(err)
 
-	err = parser.Parse(file, config)
+	err = parser.Parse(file, &config)
 
 	check(file.Close())
 
