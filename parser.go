@@ -69,7 +69,7 @@ type SectionRoot struct {
 }
 
 type SectionChild struct {
-	Identifier []string      `"." (@(Ident|"@") ("," " "*|" ")? | "%" "{" (@Ident ("," " "*|" ")?)* "}")`
+	Identifier []string      `"." (@(Ident|"@"|Int) ("," " "*|" ")? | "%" "{" (@(Ident|Int) ("," " "*|" ")?)* "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
