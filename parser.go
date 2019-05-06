@@ -76,9 +76,17 @@ type SectionChild struct {
 }
 
 type Field struct {
-	Key   string `@Ident `     // Key
-	Child *Field `( "." @@`    // When a child field should be created this is where it goes
-	Value *Value `| ":" @@ )?` // ? == allow empty values
+	Key   string      `@Ident `     // Key
+	Child *ChildField `( "." @@`    // When a child field should be created this is where it goes
+	Value *Value      `| ":" @@ )?` // ? == allow empty values
+
+	Pos lexer.Position
+}
+
+type ChildField struct {
+	Key   string      `@(Ident|Int) ` // Key
+	Child *ChildField `( "." @@`      // When a child field should be created this is where it goes
+	Value *Value      `| ":" @@ )?`   // ? == allow empty values
 
 	Pos lexer.Position
 }

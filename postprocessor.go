@@ -352,7 +352,7 @@ func (c FigureConfig) childFieldsToMap() (ret FigureConfig) {
 
 		currField := entry.Field
 		for currField.Child != nil {
-			currField.Value = &Value{Map: []*Field{currField.Child}}
+			currField.Value = &Value{Map: []*Field{&Field{Child: currField.Child.Child, Key: currField.Child.Key, Value: currField.Child.Value, Pos: currField.Child.Pos}}}
 			currField.Child = nil
 			currField = currField.Value.Map[0]
 		}
