@@ -1,28 +1,13 @@
 package main
 
 import (
-	"C"
-	"encoding/json"
 	"errors"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/alecthomas/repr"
 )
-
-// This function is for the shared library
-//export cParseFileAndProcess
-func cParseFileAndProcess(filename string) (jsonified string) {
-	parser := BuildParser()
-
-	cnf := ParseFile(filename, parser)
-	marshaled, err := json.Marshal(cnf.Transform())
-
-	check(err)
-
-	jsonified = string(marshaled)
-
-	return
-}
 
 func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	keyNames := strings.Split(*multiKeyName, ".")
@@ -46,9 +31,15 @@ func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	return currRoot, nil
 }
 
-func checkConfigError(err error, v *Value) {
+type GofigureEntry interface {
+	getFileName() string
+	getLine() int64
+	getColumn() int64
+}
+
+func checkConfigError(err error, v GofigureEntry) {
 	if err != nil {
-		panic(err.Error() + " in " + v.Pos.Filename + ":" + strconv.FormatInt(int64(v.Pos.Line), 10) + ":" + strconv.FormatInt(int64(v.Pos.Column), 10))
+		panic(err.Error() + " in " + v.getFileName() + ":" + strconv.FormatInt(v.getLine(), 10) + ":" + strconv.FormatInt(v.getColumn(), 10))
 	}
 }
 
@@ -274,6 +265,80 @@ func (c FigureConfig) reverseIdentifiers() {
 	}
 }
 
+func (v Value) mergeArraysWithConfig(prefix string, config *FigureConfig) *Value {
+	newValue := &Value{Pos: v.Pos}
+	if v.List != nil {
+		newList := make([]*Value, len(v.List))
+		for i, listVal := range v.List {
+			newList[i] = listVal.mergeArraysWithConfig(prefix, config)
+		}
+		newValue.List = newList
+	} else if v.Map != nil {
+		newMap := make([]*Field, len(v.Map))
+		for i, mapVal := range v.Map {
+			newMap[i] = mapVal.mergeArraysWithConfig(prefix, config)
+		}
+		newValue.Map = newMap
+	}
+
+	return newValue
+}
+
+func (f Field) mergeArraysWithConfig(prefix string, config *FigureConfig) *Field {
+	if res, err := strconv.Atoi(f.Key); err == nil {
+		val, err := findIdentifierInConfig(&prefix, config)
+		check(err)
+
+		val.List[res] = f.Value
+		return nil
+	} else if f.Value != nil {
+		var newPrefix string
+		if prefix == "" {
+			newPrefix = f.Key
+		} else {
+			newPrefix = prefix + "." + f.Key
+		}
+
+		newValue := &Value{Pos: f.Value.Pos}
+		if f.Value.List != nil {
+			newValue.List = make([]*Value, len(f.Value.List))
+			for i, listVal := range f.Value.List {
+				newValue.List[i] = listVal.mergeArraysWithConfig(newPrefix, config)
+			}
+		} else if f.Value.Map != nil {
+			newValue.Map = make([]*Field, len(f.Value.Map))
+			for i, mapVal := range f.Value.Map {
+				newValue.Map[i] = mapVal.mergeArraysWithConfig(newPrefix, config)
+			}
+		} else {
+			newValue = f.Value
+		}
+
+		return &Field{Pos: f.Pos, Value: newValue}
+	}
+
+	return &f
+}
+
+func (e Entry) mergeArraysWithConfig(config *FigureConfig) *Entry {
+	newField := e.Field.mergeArraysWithConfig("", config)
+	if newField == nil {
+		return nil
+	}
+
+	return &Entry{Pos: e.Pos, Field: newField}
+}
+
+func (c FigureConfig) mergeArrays() (ret FigureConfig) {
+	ret = FigureConfig{Entries: make([]*Entry, 0)}
+
+	for _, entry := range c.Entries {
+		ret.Entries = append(ret.Entries, entry.mergeArraysWithConfig(&ret))
+	}
+
+	return
+}
+
 // Transform - Takes a parsed and lexed config file and transforms it to a map
 func (c FigureConfig) Transform() map[string]interface{} {
 	c = c.parseIncludesAndAppendToConfig()
@@ -281,6 +346,10 @@ func (c FigureConfig) Transform() map[string]interface{} {
 	c = c.childFieldsToMap()
 
 	c.reverseIdentifiers()
+
+	c = c.mergeArrays()
+
+	repr.Println(c, repr.OmitEmpty(true), repr.Indent("  "))
 
 	mapped := c.toMap()
 
