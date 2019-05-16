@@ -314,7 +314,7 @@ func (f Field) mergeArraysWithConfig(prefix string, config *FigureConfig) *Field
 			newValue = f.Value
 		}
 
-		return &Field{Pos: f.Pos, Value: newValue}
+		return &Field{Pos: f.Pos, Value: newValue, Key: f.Key}
 	}
 
 	return &f
@@ -347,9 +347,9 @@ func (c FigureConfig) Transform() map[string]interface{} {
 
 	c.reverseIdentifiers()
 
-	c = c.mergeArrays()
-
 	repr.Println(c, repr.OmitEmpty(true), repr.Indent("  "))
+
+	c = c.mergeArrays()
 
 	mapped := c.toMap()
 
