@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strconv"
@@ -265,6 +266,48 @@ func (c FigureConfig) reverseIdentifiers() {
 	}
 }
 
+func mergeValues(dom, sub *Value) *Value {
+	newValue := &Value{Pos: dom.Pos}
+	if dom.Map != nil && sub.Map != nil {
+		newMap := []*Field{}
+		for _, subDominant := range sub.Map {
+			var foundField *Field
+			for _, dominant := range dom.Map {
+				if subDominant.Key == dominant.Key {
+					foundField = dominant
+					break
+				}
+			}
+
+			if foundField == nil {
+				newMap = append(newMap, subDominant)
+			} else {
+				newMap = append(newMap, foundField)
+			}
+		}
+
+		for _, dominant := range dom.Map {
+			var foundField bool
+			for _, fields := range newMap {
+				if fields.Key == dominant.Key {
+					foundField = true
+					break
+				}
+			}
+
+			if !foundField {
+				newMap = append(newMap, dominant)
+			}
+		}
+
+		newValue.Map = newMap
+	} else {
+		newValue = dom
+	}
+
+	return newValue
+}
+
 func (v Value) mergeArraysWithConfig(prefix string, config *FigureConfig) *Value {
 	newValue := &Value{Pos: v.Pos}
 	if v.List != nil {
@@ -289,7 +332,7 @@ func (f Field) mergeArraysWithConfig(prefix string, config *FigureConfig) *Field
 		val, err := findIdentifierInConfig(&prefix, config)
 		check(err)
 
-		val.List[res] = f.Value
+		val.List[res] = mergeValues(f.Value, val.List[res])
 		return nil
 	} else if f.Value != nil {
 		var newPrefix string
@@ -308,13 +351,19 @@ func (f Field) mergeArraysWithConfig(prefix string, config *FigureConfig) *Field
 		} else if f.Value.Map != nil {
 			newValue.Map = make([]*Field, len(f.Value.Map))
 			for i, mapVal := range f.Value.Map {
-				newValue.Map[i] = mapVal.mergeArraysWithConfig(newPrefix, config)
+				newMapVal := mapVal.mergeArraysWithConfig(newPrefix, config)
+				if newMapVal == nil {
+					return nil
+				}
+				newValue.Map[i] = newMapVal
 			}
 		} else {
 			newValue = f.Value
 		}
 
 		return &Field{Pos: f.Pos, Value: newValue, Key: f.Key}
+	} else {
+		f.IsNull = true
 	}
 
 	return &f
@@ -333,7 +382,11 @@ func (c FigureConfig) mergeArrays() (ret FigureConfig) {
 	ret = FigureConfig{Entries: make([]*Entry, 0)}
 
 	for _, entry := range c.Entries {
-		ret.Entries = append(ret.Entries, entry.mergeArraysWithConfig(&ret))
+		newEntry := entry.mergeArraysWithConfig(&ret)
+		if newEntry == nil {
+			continue
+		}
+		ret.Entries = append(ret.Entries, newEntry)
 	}
 
 	return
@@ -347,9 +400,9 @@ func (c FigureConfig) Transform() map[string]interface{} {
 
 	c.reverseIdentifiers()
 
-	repr.Println(c, repr.OmitEmpty(true), repr.Indent("  "))
-
 	c = c.mergeArrays()
+
+	repr.Println(c, repr.OmitEmpty(true), repr.Indent("  "))
 
 	mapped := c.toMap()
 
@@ -357,6 +410,16 @@ func (c FigureConfig) Transform() map[string]interface{} {
 }
 
 var globalRoot map[string]interface{}
+
+func (field Field) MarshalJSON() ([]byte, error) {
+	if field.IsNull {
+		return []byte(field.Key + `:null`), nil
+	} else {
+		val, err := json.Marshal(field.Value)
+		check(err)
+		return append([]byte(field.Key+":"), val...), nil
+	}
+}
 
 func (c FigureConfig) toMap() (ret map[string]interface{}) {
 	ret = map[string]interface{}{}

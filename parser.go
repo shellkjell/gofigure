@@ -80,6 +80,8 @@ type Field struct {
 	Child *ChildField `( "." @@`    // When a child field should be created this is where it goes
 	Value *Value      `| ":" @@ )?` // ? == allow empty values
 
+	IsNull bool
+
 	Pos lexer.Position
 }
 
