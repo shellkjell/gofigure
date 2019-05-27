@@ -75,10 +75,9 @@ type SectionChild struct {
 }
 
 type Field struct {
-	Key          string      `(@Ident `     // Key
-	Child        *ChildField `	( "." @@`    // When a child field should be created this is where it goes
-	Value        *Value      `	| ":" @@ )?` // ? == allow empty values
-	KeylessValue *Value      `| @@)`
+	Key   string      `@Ident `      // Key
+	Child *ChildField `	( "." @@`    // When a child field should be created this is where it goes
+	Value *Value      `	| ":" @@ )?` // ? == allow empty values
 
 	ArrayIndex *int64
 
@@ -138,6 +137,8 @@ type Value struct {
 	Float           *float64           `| @Float`
 	Map             []*Field           `| ("{"|"[") ((@@ ","?)* )? ("]"|"}")`
 	Identifier      *string            `| @Ident @("." Ident)*`
+
+	Array []*Value
 
 	Pos lexer.Position
 }

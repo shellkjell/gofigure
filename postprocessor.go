@@ -5,8 +5,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/alecthomas/repr"
 )
 
 func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
@@ -100,6 +98,16 @@ func (v *Value) toFinalValue() (ret interface{}) {
 		ret = v.Integer
 	} else if v.String != nil {
 		ret = v.String
+	} else if v.Array != nil {
+		nwArray := make([]interface{}, len(v.Array), len(v.Array))
+
+		for i, value := range v.Array {
+			if value != nil {
+				nwArray[i] = value.toFinalValue()
+			}
+		}
+
+		ret = nwArray
 	} else { // Has to be empty map
 		// todo: include flag for omitting empty values?
 		ret = map[string]interface{}{}
@@ -378,6 +386,60 @@ func (c FigureConfig) mergeArrays() (ret FigureConfig) {
 	return
 }
 
+func (f *Field) sequentialFieldsToArrays() *Field {
+	newField := &Field{
+		Pos: f.Pos,
+	}
+
+	if f.Value != nil && f.Value.Map != nil {
+		newField.Value = &Value{Pos: f.Value.Pos}
+		newField.Value.Map = make([]*Field, len(f.Value.Map), len(f.Value.Map))
+
+		for i, mapVal := range f.Value.Map {
+			newField.Value.Map[i] = mapVal.sequentialFieldsToArrays()
+		}
+
+		if keysAreSequential(newField.Value.Map) {
+			arraySize := getLargestKey(newField.Value.Map) + 1
+			newField.Value.Array = make([]*Value, arraySize, arraySize)
+
+			for _, mapVal := range newField.Value.Map {
+				index, _ := strconv.Atoi(mapVal.Key)
+				newField.Value.Array[index] = mapVal.Value
+			}
+
+			newField.Value.Map = nil
+		}
+	} else {
+		newField.Value = f.Value
+	}
+
+	newField.Key = f.Key
+
+	return newField
+}
+
+func (e *Entry) sequentialFieldsToArrays() *Entry {
+	newField := e.Field.sequentialFieldsToArrays()
+
+	return &Entry{Pos: e.Pos, Field: newField}
+}
+
+func (c FigureConfig) sequentialFieldsToArrays() (ret FigureConfig) {
+	ret = FigureConfig{
+		Entries: make([]*Entry, len(c.Entries), len(c.Entries)),
+		Pos:     c.Pos,
+	}
+
+	for i, entry := range c.Entries {
+		newEntry := entry.sequentialFieldsToArrays()
+
+		ret.Entries[i] = newEntry
+	}
+
+	return
+}
+
 // Transform - Takes a parsed and lexed config file and transforms it to a map
 func (c FigureConfig) Transform() map[string]interface{} {
 	c = c.parseIncludesAndAppendToConfig()
@@ -386,13 +448,9 @@ func (c FigureConfig) Transform() map[string]interface{} {
 
 	c.reverseIdentifiers()
 
-	repr.Println(c, repr.OmitEmpty(true), repr.Indent("  "))
-
 	c = c.fieldsToArrays()
-
 	c = c.mergeArrays()
-
-	repr.Println(c, repr.OmitEmpty(true), repr.Indent("  "))
+	c = c.sequentialFieldsToArrays()
 
 	mapped := c.toMap()
 
@@ -522,14 +580,12 @@ func (c FigureConfig) toMap() (ret map[string]interface{}) {
 				case map[string]interface{}:
 					mergeMapsOfInterface(ret[field.Key].(map[string]interface{}), finalValue.(map[string]interface{}))
 					break
-				default: // finalValue is an array
+				default: // finalValue is an array?
+					break
 					currField := ret[field.Key]
-					repr.Println(value)
-					repr.Println(currField)
-					repr.Println(finalValue)
-					// for _, arrayVal := range finalValue.([]interface{}) {
-					// 	// currField = append(currField, arrayVal)
-					// }
+					for _, arrayVal := range finalValue.([]interface{}) {
+						currField = append(currField.([]Value), arrayVal.(Value))
+					}
 				}
 			}
 		} else {
