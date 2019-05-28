@@ -75,51 +75,22 @@ type SectionChild struct {
 }
 
 type Field struct {
-	Key   string      `@Ident `      // Key
-	Child *ChildField `	( "." @@`    // When a child field should be created this is where it goes
-	Value *Value      `	| ":" @@ )?` // ? == allow empty values
+	Key   string      `(@Ident `      // Key
+	Child *ChildField `	( "." @@`     // When a child field should be created this is where it goes
+	Value *Value      `	| ":" @@ )?)` // ? == allow empty values
 
 	ArrayIndex *int64
+	// ArrayIndex is not populated at parse-time,
+	// it's in this struct as childfields later get expanded to regular fields
 
 	Pos lexer.Position
 }
 
-var symbolTable = GoFigureLexer.Symbols()
-
-// func (cf *ChildField) Parse(lex lexer.PeekingLexer) error {
-// 	token, err := lex.Peek(0)
-// 	repr.Println(token)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	intRune, _ := symbolTable["Int"]
-// 	repr.Println(intRune == token.Type)
-// 	// if !ok {
-// 	// 	return participle.NextMatch
-// 	// }
-// 	repr.Println(token)
-// 	_, err = lex.Next()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	repr.Println(token)
-// 	// *cf = v
-// 	return nil
-// }
-
-// func (cf *ChildField) Parse(lex lexer.PeekingLexer) error {
-// 	for next, _ := lex.Next(); next != lexer.EOFToken(lexer.); next, _ = lex.Next() {
-
-// 	}
-
-// 	return nil
-// }
-
 type ChildField struct {
-	Key        string      `(@Ident ` // Key
+	Key        string      `((@Ident ` // Key
 	ArrayIndex *int64      `|@Int)`
-	Child      *ChildField `( "." @@`    // When a child field should be created this is where it goes
-	Value      *Value      `| ":" @@ )?` // ? == allow empty values
+	Child      *ChildField `( "." @@`     // When a child field should be created this is where it goes
+	Value      *Value      `| ":" @@ )?)` // ? == allow empty values
 
 	Pos lexer.Position
 }
@@ -135,10 +106,11 @@ type Value struct {
 	MultilineString *UnprocessedString `| @@`
 	Integer         *int64             `| @Int`
 	Float           *float64           `| @Float`
-	Map             []*Field           `| ("{"|"[") ((@@ ","?)* )? ("]"|"}")`
+	Map             []*Field           `| "{" ((@@ ","?)* )? "}"`
+	ParsedArray     []*Value           `| "[" ((@@ ","?)* )? "]"`
 	Identifier      *string            `| @Ident @("." Ident)*`
 
-	Array []*Value
+	FinalArray []*Value
 
 	Pos lexer.Position
 }

@@ -98,10 +98,20 @@ func (v *Value) toFinalValue() (ret interface{}) {
 		ret = v.Integer
 	} else if v.String != nil {
 		ret = v.String
-	} else if v.Array != nil {
-		nwArray := make([]interface{}, len(v.Array), len(v.Array))
+	} else if v.FinalArray != nil {
+		nwArray := make([]interface{}, len(v.FinalArray), len(v.FinalArray))
 
-		for i, value := range v.Array {
+		for i, value := range v.FinalArray {
+			if value != nil {
+				nwArray[i] = value.toFinalValue()
+			}
+		}
+
+		ret = nwArray
+	} else if v.ParsedArray != nil {
+		nwArray := make([]interface{}, len(v.ParsedArray), len(v.ParsedArray))
+
+		for i, value := range v.ParsedArray {
 			if value != nil {
 				nwArray[i] = value.toFinalValue()
 			}
@@ -401,11 +411,11 @@ func (f *Field) sequentialFieldsToArrays() *Field {
 
 		if keysAreSequential(newField.Value.Map) {
 			arraySize := getLargestKey(newField.Value.Map) + 1
-			newField.Value.Array = make([]*Value, arraySize, arraySize)
+			newField.Value.FinalArray = make([]*Value, arraySize, arraySize)
 
 			for _, mapVal := range newField.Value.Map {
 				index, _ := strconv.Atoi(mapVal.Key)
-				newField.Value.Array[index] = mapVal.Value
+				newField.Value.FinalArray[index] = mapVal.Value
 			}
 
 			newField.Value.Map = nil
