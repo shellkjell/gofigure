@@ -29,15 +29,35 @@ func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	return currRoot, nil
 }
 
+func (e *Entry) getFileName() string {
+	return e.Pos.Filename
+}
+func (e *Entry) getLine() int {
+	return e.Pos.Line
+}
+func (e *Entry) getColumn() int {
+	return e.Pos.Column
+}
+
+func (f *Field) getFileName() string {
+	return f.Pos.Filename
+}
+func (f *Field) getLine() int {
+	return f.Pos.Line
+}
+func (f *Field) getColumn() int {
+	return f.Pos.Column
+}
+
 type GofigureEntry interface {
 	getFileName() string
-	getLine() int64
-	getColumn() int64
+	getLine() int
+	getColumn() int
 }
 
 func checkConfigError(err error, v GofigureEntry) {
 	if err != nil {
-		panic(err.Error() + " in " + v.getFileName() + ":" + strconv.FormatInt(v.getLine(), 10) + ":" + strconv.FormatInt(v.getColumn(), 10))
+		panic(err.Error() + " in " + v.getFileName() + ":" + strconv.FormatInt(int64(v.getLine()), 10) + ":" + strconv.FormatInt(int64(v.getColumn()), 10))
 	}
 }
 
@@ -98,6 +118,8 @@ func (v *Value) toFinalValue() (ret interface{}) {
 		ret = v.Integer
 	} else if v.String != nil {
 		ret = v.String
+	} else if v.MultilineString != nil {
+		ret = v.MultilineString.transform()
 	} else if v.FinalArray != nil {
 		nwArray := make([]interface{}, len(v.FinalArray), len(v.FinalArray))
 
@@ -182,6 +204,7 @@ func findIdentifierInMap(identifier *string, fields []*Field) (*Value, error) {
 
 func findIdentifierInConfig(identifier *string, root *FigureConfig) (*Value, error) {
 	identParts := strings.Split(*identifier, ".")
+	var err error
 
 	for _, entry := range root.Entries {
 		field := entry.Field
@@ -199,27 +222,29 @@ func findIdentifierInConfig(identifier *string, root *FigureConfig) (*Value, err
 
 		if field.Key == identParts[0] && value.Map != nil {
 			var v *Value
-			var err error
+			err = nil
 
-			for i := 1; i < len(identParts); i++ {
-				v, err = findIdentifierInMap(&identParts[i], value.Map)
-
-				check(err)
+			for j := 1; j < len(identParts) && err == nil; j++ {
+				v, err = findIdentifierInMap(&identParts[j], value.Map)
 
 				value = v
 			}
 
-			return value, nil
+			if err == nil {
+				return value, err
+			}
 		}
 	}
 
-	return nil, errors.New("No key called " + *identifier + " exists.")
+	return nil, err
 }
 
 func reverseIdentifiersInList(values []*Value, root *FigureConfig) {
 	for i, value := range values {
 		if value.Map != nil {
 			reverseIdentifiersInMap(value.Map, root)
+		} else if value.ParsedArray != nil {
+			reverseIdentifiersInList(value.ParsedArray, root)
 		} else if value.Identifier != nil {
 			identVal, err := findIdentifierInConfig(value.Identifier, root)
 			check(err)
@@ -239,9 +264,11 @@ func reverseIdentifiersInMap(fields []*Field, root *FigureConfig) {
 
 		if val.Map != nil {
 			reverseIdentifiersInMap(val.Map, root)
+		} else if val.ParsedArray != nil {
+			reverseIdentifiersInList(val.ParsedArray, root)
 		} else if val.Identifier != nil {
 			identVal, err := findIdentifierInConfig(val.Identifier, root)
-			check(err)
+			checkConfigError(err, field)
 
 			field.Value = identVal
 		}
@@ -261,6 +288,8 @@ func (c FigureConfig) reverseIdentifiers() {
 
 		if field.Value.Map != nil {
 			reverseIdentifiersInMap(field.Value.Map, tmpConfig)
+		} else if field.Value.ParsedArray != nil {
+			reverseIdentifiersInList(field.Value.ParsedArray, tmpConfig)
 		} else if field.Value.Identifier != nil {
 			identVal, err := findIdentifierInConfig(field.Value.Identifier, tmpConfig)
 			check(err)

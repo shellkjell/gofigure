@@ -36,6 +36,6 @@ key4: [
     key # Look in local scope first, then in global scope
 ]
 
-[]
+![]
 
 %include "files/config.special.fig"

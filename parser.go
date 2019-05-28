@@ -110,6 +110,7 @@ type Value struct {
 	ParsedArray     []*Value           `| "[" ((@@ ","?)* )? "]"`
 	Identifier      *string            `| @Ident @("." Ident)*`
 
+	// Here is where a sequential-number named map goes
 	FinalArray []*Value
 
 	Pos lexer.Position
