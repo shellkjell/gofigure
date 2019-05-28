@@ -105,7 +105,7 @@ func (v *Value) toFinalValue() (ret interface{}) {
 
 		for _, field := range v.Map {
 			if field.Value == nil {
-				delete(nwMap, field.Key)
+				nwMap[field.Key] = nil
 			} else {
 				nwMap[field.Key] = field.Value.toFinalValue()
 			}
@@ -620,11 +620,11 @@ func (c FigureConfig) toMap() (ret map[string]interface{}) {
 					mergeMapsOfInterface(ret[field.Key].(map[string]interface{}), finalValue.(map[string]interface{}))
 					break
 				default: // finalValue is an array?
-					break
 					currField := ret[field.Key]
 					for _, arrayVal := range finalValue.([]interface{}) {
 						currField = append(currField.([]Value), arrayVal.(Value))
 					}
+					break
 				}
 			}
 		} else {
