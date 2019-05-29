@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
+	"strings"
 )
 
 var stderr = log.New(os.Stderr, "", 0)
@@ -34,6 +36,12 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	cwd := path.Dir(inFile)
+
+	setWorkingDirectory(cwd)
+
+	inFile = strings.Replace(inFile, cwd+"/", "", 1)
 
 	config := ParseFile(inFile, nil)
 

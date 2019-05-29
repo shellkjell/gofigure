@@ -675,6 +675,21 @@ func (s *SectionChild) expandToFields(setTo []*Field) (retVal []*Field) {
 		childFields = setTo
 	}
 
+	// Check for integer range expand macro
+	if len(s.Identifier) == 3 && s.Identifier[1] == "..." {
+		int1, _ := strconv.Atoi(s.Identifier[0])
+		int2, _ := strconv.Atoi(s.Identifier[2])
+
+		length := (int2 - int1) + 1
+		newIdentifiers := make([]string, length, length)
+
+		for i, _ := range newIdentifiers {
+			newIdentifiers[i] = strconv.Itoa(int1 + i)
+		}
+
+		s.Identifier = newIdentifiers
+	}
+
 	for _, sectName := range s.Identifier {
 		newField := &Field{Key: sectName, Value: &Value{Map: childFields}}
 
@@ -754,7 +769,7 @@ func (c FigureConfig) explodeSectionsToFields() (ret FigureConfig) {
 }
 
 func (c FigureConfig) parseIncludesAndAppendToConfig() (ret FigureConfig) {
-	ret = FigureConfig{}
+	ret = FigureConfig{Pos: c.Pos}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {

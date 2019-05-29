@@ -11,21 +11,22 @@ import (
 // A valid indentifier part is one of the following:
 // 1. an escaped character, like \"
 // 2. a string of characters
-var re_valid_ident_part = `(\\.|[a-zA-Z_][a-zA-Z\d_]+)`
+var re_valid_ident_part = `(\\.|[a-zA-Z_][-a-zA-Z\d_]+)`
 
 // GoFigureLexer - Contains the lexicographic rules for how gofigure is parsed
 var GoFigureLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
 		`(\s+)` +
-		`|([#;].*$)` +
+		`|([#;].*$)|(/\*[.\s\n\r]*\*/)` + // Comments
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
 		`|(?P<Ident>` + re_valid_ident_part + `)` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
-		`|(?P<SectionEnd>!\[\])` +
+		`|(?P<SectionEnd>\[\])` +
 		`|(?P<Include>%include)` +
-		`|(?P<Special>[][{},. :%@])`,
+		`|(?P<Expand>\.\.\.)` +
+		`|(?P<Special>[][{}.,:%@])`,
 ))
 
 // FigureConfig - Structure capable of containing a full GoFigure configuration
@@ -43,7 +44,7 @@ type Entry struct {
 }
 
 type Include struct {
-	Includes []string `"%include" @String (","? @String)*`
+	Includes []string `"%include" @String (","? @String)* `
 
 	Pos lexer.Position
 }
@@ -68,7 +69,7 @@ type SectionRoot struct {
 }
 
 type SectionChild struct {
-	Identifier []string      `"." (@(Ident|"@"|Int) ("," " "*|" ")? | "%" "{" (@(Ident|Int) ("," " "*|" ")?)* "}")`
+	Identifier []string      `"." (@(Ident|"@"|Int) ("," " "*|" ")? | "%" "{" (@Int @"..." @Int | (@(Ident|Int) ("," " "*|" ")?)*) "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
@@ -122,6 +123,12 @@ func checkFileError(err error, filename string) {
 	}
 }
 
+var _workingDirectory string
+
+func setWorkingDirectory(workingDirectory string) {
+	_workingDirectory = workingDirectory
+}
+
 // BuildParser - Builds a new parser with GoFigureLexer as lexer
 func BuildParser() (parser *participle.Parser) {
 	parser, err := participle.Build(
@@ -140,6 +147,10 @@ func ParseFile(filename string, parser *participle.Parser) (config FigureConfig)
 	config = FigureConfig{}
 	if parser == nil {
 		parser = BuildParser()
+	}
+
+	if _workingDirectory != "" {
+		filename = _workingDirectory + "/" + filename
 	}
 
 	// Open a handle to file
