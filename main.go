@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
 	"strings"
 )
 
@@ -37,7 +36,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	cwd := path.Dir(inFile)
+	fmt.Println(os.Args[0])
+
+	cwd, err := os.Getwd()
 
 	setWorkingDirectory(cwd)
 
