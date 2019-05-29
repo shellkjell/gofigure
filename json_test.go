@@ -16,18 +16,71 @@ func TestJsonMarshalCases(t *testing.T) {
 
 	testCases := []MarshalJSONTestCase{
 		MarshalJSONTestCase{
-			data:     `[test.%{dev,prod}]` + "\n" + `key:"value"`,
-			expected: `{"test":{"dev":{"key":"value"},"prod":{"key":"value"}}}`,
+			data: `
+			[test.%{dev,prod}]
+				key:"value"`,
+			expected: `
+			{
+				"test" : {
+					 "dev" : {
+							"key" : "value"
+					 },
+					 "prod" : {
+							"key" : "value"
+					 }
+				}
+		  }`,
 		},
 
 		MarshalJSONTestCase{
-			data:     `[test] key:"value" [@.key] key:"value"`,
-			expected: `{"test":{"key":{"key":"value"}}}`,
+			data: `
+			[test] 
+				key:"value" 
+			[@.key] 
+				key:"value"`,
+			expected: `
+			{
+				"test" : {
+					 "key" : {
+							"key" : "value"
+					 }
+				}
+		  }`,
 		},
 
 		MarshalJSONTestCase{
-			data:     `[%{root1,root2}] key:"value" [@.%{dev,prod,qa}] key:"value"`,
-			expected: `{"root1":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}},"root2":{"key":"value","dev":{"key":"value"},"prod":{"key":"value"},"qa":{"key":"value"}}}`,
+			data: `
+			[%{root1,root2}] 
+				key:"value1" 
+			[@.%{dev,prod,qa}] 
+				key:"value2"`,
+			expected: `
+			{
+				"root1": {
+					"key": "value1",
+					"dev": {
+						"key": "value2"
+					},
+					"prod": {
+						"key": "value2"
+					},
+					"qa": {
+						"key": "value2"
+					}
+				},
+				"root2": {
+					"key": "value1",
+					"dev": {
+						"key":"value2"
+					},
+					"prod": {
+						"key": "value2"
+					},
+					"qa": {
+						"key": "value2"
+					}
+				}
+			}`,
 		},
 
 		MarshalJSONTestCase{
@@ -49,7 +102,7 @@ func TestJsonMarshalCases(t *testing.T) {
 		// Maybe do something to ensure determinism here
 		MarshalJSONTestCase{
 			data:     `Rick_Astley:"Never" \":"gonna" \[:"give" %include "files/config.special.fig"`,
-			expected: `{"Rick_Astley":"Never","\\\"":"gonna","\\[":"give","quote_value":"gonna","array_value":"give"}`,
+			expected: `{"Rick_Astley":"Never","\\\"":"gonna","\\[":"give","quote_value":"gonna","array_value":"give","empty_value":null}`,
 		},
 
 		MarshalJSONTestCase{

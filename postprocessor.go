@@ -1,28 +1,11 @@
 package main
 
 import (
-	"C"
-	"encoding/json"
 	"errors"
 	"regexp"
 	"strconv"
 	"strings"
 )
-
-// This function is for the shared library
-//export cParseFileAndProcess
-func cParseFileAndProcess(filename string) (jsonified string) {
-	parser := BuildParser()
-
-	cnf := ParseFile(filename, parser)
-	marshaled, err := json.Marshal(cnf.Transform())
-
-	check(err)
-
-	jsonified = string(marshaled)
-
-	return
-}
 
 func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	keyNames := strings.Split(*multiKeyName, ".")
@@ -46,9 +29,35 @@ func lookupIdentifierInRoot(multiKeyName *string) (interface{}, error) {
 	return currRoot, nil
 }
 
-func checkConfigError(err error, v *Value) {
+func (e *Entry) getFileName() string {
+	return e.Pos.Filename
+}
+func (e *Entry) getLine() int {
+	return e.Pos.Line
+}
+func (e *Entry) getColumn() int {
+	return e.Pos.Column
+}
+
+func (f *Field) getFileName() string {
+	return f.Pos.Filename
+}
+func (f *Field) getLine() int {
+	return f.Pos.Line
+}
+func (f *Field) getColumn() int {
+	return f.Pos.Column
+}
+
+type GofigureEntry interface {
+	getFileName() string
+	getLine() int
+	getColumn() int
+}
+
+func checkConfigError(err error, v GofigureEntry) {
 	if err != nil {
-		panic(err.Error() + " in " + v.Pos.Filename + ":" + strconv.FormatInt(int64(v.Pos.Line), 10) + ":" + strconv.FormatInt(int64(v.Pos.Column), 10))
+		panic(err.Error() + " in " + v.getFileName() + ":" + strconv.FormatInt(int64(v.getLine()), 10) + ":" + strconv.FormatInt(int64(v.getColumn()), 10))
 	}
 }
 
@@ -96,26 +105,41 @@ func (v *Value) toFinalValue() (ret interface{}) {
 
 		for _, field := range v.Map {
 			if field.Value == nil {
-				delete(nwMap, field.Key)
+				nwMap[field.Key] = nil
 			} else {
 				nwMap[field.Key] = field.Value.toFinalValue()
 			}
 		}
 
 		ret = nwMap
-	} else if v.List != nil {
-		nwList := make([]interface{}, len(v.List), len(v.List))
-		for i, val := range v.List {
-			nwList[i] = val.toFinalValue()
-		}
-
-		ret = nwList
 	} else if v.Float != nil {
 		ret = v.Float
 	} else if v.Integer != nil {
 		ret = v.Integer
 	} else if v.String != nil {
 		ret = v.String
+	} else if v.MultilineString != nil {
+		ret = v.MultilineString.transform()
+	} else if v.FinalArray != nil {
+		nwArray := make([]interface{}, len(v.FinalArray), len(v.FinalArray))
+
+		for i, value := range v.FinalArray {
+			if value != nil {
+				nwArray[i] = value.toFinalValue()
+			}
+		}
+
+		ret = nwArray
+	} else if v.ParsedArray != nil {
+		nwArray := make([]interface{}, len(v.ParsedArray), len(v.ParsedArray))
+
+		for i, value := range v.ParsedArray {
+			if value != nil {
+				nwArray[i] = value.toFinalValue()
+			}
+		}
+
+		ret = nwArray
 	} else { // Has to be empty map
 		// todo: include flag for omitting empty values?
 		ret = map[string]interface{}{}
@@ -180,6 +204,7 @@ func findIdentifierInMap(identifier *string, fields []*Field) (*Value, error) {
 
 func findIdentifierInConfig(identifier *string, root *FigureConfig) (*Value, error) {
 	identParts := strings.Split(*identifier, ".")
+	var err error
 
 	for _, entry := range root.Entries {
 		field := entry.Field
@@ -197,29 +222,29 @@ func findIdentifierInConfig(identifier *string, root *FigureConfig) (*Value, err
 
 		if field.Key == identParts[0] && value.Map != nil {
 			var v *Value
-			var err error
+			err = nil
 
-			for i := 1; i < len(identParts); i++ {
-				v, err = findIdentifierInMap(&identParts[i], value.Map)
-
-				check(err)
+			for j := 1; j < len(identParts) && err == nil; j++ {
+				v, err = findIdentifierInMap(&identParts[j], value.Map)
 
 				value = v
 			}
 
-			return value, nil
+			if err == nil {
+				return value, err
+			}
 		}
 	}
 
-	return nil, errors.New("No key called " + *identifier + " exists.")
+	return nil, err
 }
 
 func reverseIdentifiersInList(values []*Value, root *FigureConfig) {
 	for i, value := range values {
 		if value.Map != nil {
 			reverseIdentifiersInMap(value.Map, root)
-		} else if value.List != nil {
-			reverseIdentifiersInList(value.List, root)
+		} else if value.ParsedArray != nil {
+			reverseIdentifiersInList(value.ParsedArray, root)
 		} else if value.Identifier != nil {
 			identVal, err := findIdentifierInConfig(value.Identifier, root)
 			check(err)
@@ -239,11 +264,11 @@ func reverseIdentifiersInMap(fields []*Field, root *FigureConfig) {
 
 		if val.Map != nil {
 			reverseIdentifiersInMap(val.Map, root)
-		} else if val.List != nil {
-			reverseIdentifiersInList(val.List, root)
+		} else if val.ParsedArray != nil {
+			reverseIdentifiersInList(val.ParsedArray, root)
 		} else if val.Identifier != nil {
 			identVal, err := findIdentifierInConfig(val.Identifier, root)
-			check(err)
+			checkConfigError(err, field)
 
 			field.Value = identVal
 		}
@@ -263,8 +288,8 @@ func (c FigureConfig) reverseIdentifiers() {
 
 		if field.Value.Map != nil {
 			reverseIdentifiersInMap(field.Value.Map, tmpConfig)
-		} else if field.Value.List != nil {
-			reverseIdentifiersInList(field.Value.List, tmpConfig)
+		} else if field.Value.ParsedArray != nil {
+			reverseIdentifiersInList(field.Value.ParsedArray, tmpConfig)
 		} else if field.Value.Identifier != nil {
 			identVal, err := findIdentifierInConfig(field.Value.Identifier, tmpConfig)
 			check(err)
@@ -272,6 +297,186 @@ func (c FigureConfig) reverseIdentifiers() {
 			field.Value = identVal
 		}
 	}
+}
+
+func mergeValues(dom, sub *Value) *Value {
+	newValue := &Value{Pos: dom.Pos}
+	if dom.Map != nil && sub.Map != nil {
+		newMap := []*Field{}
+		for _, subDominant := range sub.Map {
+			var foundField *Field
+			for _, dominant := range dom.Map {
+				if subDominant.Key == dominant.Key {
+					foundField = dominant
+					break
+				}
+			}
+
+			if foundField == nil {
+				newMap = append(newMap, subDominant)
+			} else {
+				newMap = append(newMap, foundField)
+			}
+		}
+
+		for _, dominant := range dom.Map {
+			var foundField bool
+			for _, fields := range newMap {
+				if fields.Key == dominant.Key {
+					foundField = true
+					break
+				}
+			}
+
+			if !foundField {
+				newMap = append(newMap, dominant)
+			}
+		}
+
+		newValue.Map = newMap
+	} else {
+		newValue = dom
+	}
+
+	return newValue
+}
+
+func (v Value) mergeArraysWithConfig(prefix string, config *FigureConfig) *Value {
+	newValue := &Value{Pos: v.Pos}
+	if v.Map != nil {
+		newMap := make([]*Field, len(v.Map))
+		for i, mapVal := range v.Map {
+			newMap[i] = mapVal.mergeArraysWithConfig(prefix, config)
+		}
+		newValue.Map = newMap
+	}
+
+	return newValue
+}
+
+func (f Field) mergeArraysWithConfig(prefix string, config *FigureConfig) *Field {
+	if f.ArrayIndex != nil {
+		val, err := findIdentifierInConfig(&prefix, config)
+		check(err)
+
+		var foundField *Field
+
+		for _, mapVal := range val.Map {
+			if mapVal.Key == strconv.Itoa(int(*f.ArrayIndex)) {
+				foundField = mapVal
+				break
+			}
+		}
+
+		if foundField == nil {
+			panic("lol")
+		}
+
+		foundField.Value = mergeValues(f.Value, foundField.Value)
+		return nil
+	} else if f.Value != nil {
+		var newPrefix string
+		if prefix == "" {
+			newPrefix = f.Key
+		} else {
+			newPrefix = prefix + "." + f.Key
+		}
+
+		newValue := &Value{Pos: f.Value.Pos}
+		if f.Value.Map != nil {
+			newValue.Map = make([]*Field, len(f.Value.Map))
+			for i, mapVal := range f.Value.Map {
+				newMapVal := mapVal.mergeArraysWithConfig(newPrefix, config)
+				if newMapVal == nil {
+					return nil
+				}
+				newValue.Map[i] = newMapVal
+			}
+		} else {
+			newValue = f.Value
+		}
+
+		return &Field{Pos: f.Pos, Value: newValue, Key: f.Key}
+	}
+
+	return &f
+}
+
+func (e Entry) mergeArraysWithConfig(config *FigureConfig) *Entry {
+	newField := e.Field.mergeArraysWithConfig("", config)
+	if newField == nil {
+		return nil
+	}
+
+	return &Entry{Pos: e.Pos, Field: newField}
+}
+
+func (c FigureConfig) mergeArrays() (ret FigureConfig) {
+	ret = FigureConfig{Entries: make([]*Entry, 0)}
+
+	for _, entry := range c.Entries {
+		newEntry := entry.mergeArraysWithConfig(&ret)
+		if newEntry == nil {
+			continue
+		}
+		ret.Entries = append(ret.Entries, newEntry)
+	}
+
+	return
+}
+
+func (f *Field) sequentialFieldsToArrays() *Field {
+	newField := &Field{
+		Pos: f.Pos,
+	}
+
+	if f.Value != nil && f.Value.Map != nil {
+		newField.Value = &Value{Pos: f.Value.Pos}
+		newField.Value.Map = make([]*Field, len(f.Value.Map), len(f.Value.Map))
+
+		for i, mapVal := range f.Value.Map {
+			newField.Value.Map[i] = mapVal.sequentialFieldsToArrays()
+		}
+
+		if keysAreSequential(newField.Value.Map) {
+			arraySize := getLargestKey(newField.Value.Map) + 1
+			newField.Value.FinalArray = make([]*Value, arraySize, arraySize)
+
+			for _, mapVal := range newField.Value.Map {
+				index, _ := strconv.Atoi(mapVal.Key)
+				newField.Value.FinalArray[index] = mapVal.Value
+			}
+
+			newField.Value.Map = nil
+		}
+	} else {
+		newField.Value = f.Value
+	}
+
+	newField.Key = f.Key
+
+	return newField
+}
+
+func (e *Entry) sequentialFieldsToArrays() *Entry {
+	newField := e.Field.sequentialFieldsToArrays()
+
+	return &Entry{Pos: e.Pos, Field: newField}
+}
+
+func (c FigureConfig) sequentialFieldsToArrays() (ret FigureConfig) {
+	ret = FigureConfig{
+		Entries: make([]*Entry, len(c.Entries), len(c.Entries)),
+		Pos:     c.Pos,
+	}
+
+	for i, entry := range c.Entries {
+		newEntry := entry.sequentialFieldsToArrays()
+
+		ret.Entries[i] = newEntry
+	}
+
+	return
 }
 
 // Transform - Takes a parsed and lexed config file and transforms it to a map
@@ -282,9 +487,89 @@ func (c FigureConfig) Transform() map[string]interface{} {
 
 	c.reverseIdentifiers()
 
+	c = c.fieldsToArrays()
+	c = c.mergeArrays()
+	c = c.sequentialFieldsToArrays()
+
 	mapped := c.toMap()
 
 	return mapped
+}
+
+func keysAreSequential(arg []*Field) bool {
+	var lastIndex int
+	for _, mapVal := range arg {
+		if arrayIndex, err := strconv.Atoi(mapVal.Key); err == nil {
+			if lastIndex < arrayIndex || lastIndex == 0 && arrayIndex == 0 {
+				lastIndex = arrayIndex
+			} else {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	return true
+}
+
+func getLargestKey(arg []*Field) int {
+	var largest int
+	for _, mapVal := range arg {
+		arrayIndex, _ := strconv.Atoi(mapVal.Key)
+		if arrayIndex > largest {
+			largest = arrayIndex
+		}
+	}
+
+	return largest
+}
+
+func (value *Value) fieldsToArrays() (ret *Value) {
+	ret = &Value{Pos: value.Pos}
+
+	if value.Map != nil {
+		newMap := make([]*Field, len(value.Map))
+		for i, mapVal := range value.Map {
+			newMap[i] = mapVal.fieldsToArrays()
+		}
+		ret.Map = newMap
+
+	} else {
+		return value
+	}
+
+	return
+}
+
+func (field *Field) fieldsToArrays() (ret *Field) {
+	if field.Value == nil {
+		return field
+	}
+
+	ret = &Field{Pos: field.Pos}
+	ret.Key = field.Key
+	ret.ArrayIndex = field.ArrayIndex
+	ret.Value = field.Value.fieldsToArrays()
+
+	return
+}
+
+func (config FigureConfig) fieldsToArrays() (ret FigureConfig) {
+	ret = FigureConfig{}
+	ret.Entries = make([]*Entry, len(config.Entries))
+
+	for i, entry := range config.Entries {
+		newField := entry.Field.fieldsToArrays()
+
+		newEntry := &Entry{}
+		newEntry.Pos = entry.Pos
+		newEntry.Field = newField
+
+		ret.Entries[i] = newEntry
+	}
+
+	return
 }
 
 var globalRoot map[string]interface{}
@@ -329,8 +614,18 @@ func (c FigureConfig) toMap() (ret map[string]interface{}) {
 		if value != nil {
 			if _, exists := ret[field.Key]; !exists {
 				ret[field.Key] = finalValue
-			} else { // Only maps are Reassigns == false, change to better name?
-				mergeMapsOfInterface(ret[field.Key].(map[string]interface{}), finalValue.(map[string]interface{}))
+			} else {
+				switch finalValue.(type) {
+				case map[string]interface{}:
+					mergeMapsOfInterface(ret[field.Key].(map[string]interface{}), finalValue.(map[string]interface{}))
+					break
+				default: // finalValue is an array?
+					currField := ret[field.Key]
+					for _, arrayVal := range finalValue.([]interface{}) {
+						currField = append(currField.([]Value), arrayVal.(Value))
+					}
+					break
+				}
 			}
 		} else {
 			ret[field.Key] = nil
@@ -352,7 +647,15 @@ func (c FigureConfig) childFieldsToMap() (ret FigureConfig) {
 
 		currField := entry.Field
 		for currField.Child != nil {
-			currField.Value = &Value{Map: []*Field{currField.Child}}
+			currField.Value = &Value{
+				Map: []*Field{
+					&Field{
+						ArrayIndex: currField.Child.ArrayIndex,
+						Child:      currField.Child.Child,
+						Key:        currField.Child.Key,
+						Value:      currField.Child.Value,
+						Pos:        currField.Child.Pos,
+					}}}
 			currField.Child = nil
 			currField = currField.Value.Map[0]
 		}
@@ -372,8 +675,25 @@ func (s *SectionChild) expandToFields(setTo []*Field) (retVal []*Field) {
 		childFields = setTo
 	}
 
+	// Check for integer range expand macro
+	if len(s.Identifier) == 3 && s.Identifier[1] == "..." {
+		int1, _ := strconv.Atoi(s.Identifier[0])
+		int2, _ := strconv.Atoi(s.Identifier[2])
+
+		length := (int2 - int1) + 1
+		newIdentifiers := make([]string, length, length)
+
+		for i, _ := range newIdentifiers {
+			newIdentifiers[i] = strconv.Itoa(int1 + i)
+		}
+
+		s.Identifier = newIdentifiers
+	}
+
 	for _, sectName := range s.Identifier {
-		retVal = append(retVal, &Field{Key: sectName, Value: &Value{Map: childFields}})
+		newField := &Field{Key: sectName, Value: &Value{Map: childFields}}
+
+		retVal = append(retVal, newField)
 	}
 
 	return
@@ -449,7 +769,7 @@ func (c FigureConfig) explodeSectionsToFields() (ret FigureConfig) {
 }
 
 func (c FigureConfig) parseIncludesAndAppendToConfig() (ret FigureConfig) {
-	ret = FigureConfig{}
+	ret = FigureConfig{Pos: c.Pos}
 	ret.Entries = make([]*Entry, len(c.Entries))
 
 	for i, newEntriesIndex := 0, 0; i < len(c.Entries); i++ {
