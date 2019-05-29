@@ -11,13 +11,13 @@ import (
 // A valid indentifier part is one of the following:
 // 1. an escaped character, like \"
 // 2. a string of characters
-var re_valid_ident_part = `(\\.|[a-zA-Z_][a-zA-Z\d_]+)`
+var re_valid_ident_part = `(\\.|[a-zA-Z_][-a-zA-Z\d_]+)`
 
 // GoFigureLexer - Contains the lexicographic rules for how gofigure is parsed
 var GoFigureLexer = lexer.Must(lexer.Regexp(
 	`(?m)` +
 		`(\s+)` +
-		`|([#;].*$)` +
+		`|([#;].*$)|(/\*[.\s\n\r]*\*/)` + // Comments
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
 		`|(?P<Ident>` + re_valid_ident_part + `)` +
@@ -25,7 +25,8 @@ var GoFigureLexer = lexer.Must(lexer.Regexp(
 		`|(?P<Int>-?\d+)` +
 		`|(?P<SectionEnd>\[\])` +
 		`|(?P<Include>%include)` +
-		`|(?P<Special>[][{},. :%@])`,
+		`|(?P<Expand>\.\.\.)` +
+		`|(?P<Special>[][{}.,:%@])`,
 ))
 
 // FigureConfig - Structure capable of containing a full GoFigure configuration
@@ -37,14 +38,13 @@ type FigureConfig struct {
 
 type Entry struct {
 	Include *Include `@@`
-	Field   *Field   `| @@`
 	Section *Section `| "[" @@ (SectionEnd|EOF)?`
-
-	Pos lexer.Position
+	Field   *Field   `| @@`
+	Pos     lexer.Position
 }
 
 type Include struct {
-	Includes []string `"%include" @String (","? @String)*`
+	Includes []string `"%include" @String (","? @String)* `
 
 	Pos lexer.Position
 }
@@ -69,24 +69,29 @@ type SectionRoot struct {
 }
 
 type SectionChild struct {
-	Identifier []string      `"." (@(Ident|"@"|Int) ("," " "*|" ")? | "%" "{" (@(Ident|Int) ("," " "*|" ")?)* "}")`
+	Identifier []string      `"." (@(Ident|"@"|Int) ("," " "*|" ")? | "%" "{" (@Int @"..." @Int | (@(Ident|Int) ("," " "*|" ")?)*) "}")`
 	Child      *SectionChild `(@@)?`
 
 	Pos lexer.Position
 }
 
 type Field struct {
-	Key   string      `@Ident `     // Key
-	Child *ChildField `( "." @@`    // When a child field should be created this is where it goes
-	Value *Value      `| ":" @@ )?` // ? == allow empty values
+	Key   string      `(@Ident `      // Key
+	Child *ChildField `	( "." @@`     // When a child field should be created this is where it goes
+	Value *Value      `	| ":" @@ )?)` // ? == allow empty values
+
+	ArrayIndex *int64
+	// ArrayIndex is not populated at parse-time,
+	// it's in this struct as childfields later get expanded to regular fields
 
 	Pos lexer.Position
 }
 
 type ChildField struct {
-	Key   string      `@(Ident|Int) ` // Key
-	Child *ChildField `( "." @@`      // When a child field should be created this is where it goes
-	Value *Value      `| ":" @@ )?`   // ? == allow empty values
+	Key        string      `((@Ident ` // Key
+	ArrayIndex *int64      `|@Int)`
+	Child      *ChildField `( "." @@`     // When a child field should be created this is where it goes
+	Value      *Value      `| ":" @@ )?)` // ? == allow empty values
 
 	Pos lexer.Position
 }
@@ -102,9 +107,12 @@ type Value struct {
 	MultilineString *UnprocessedString `| @@`
 	Integer         *int64             `| @Int`
 	Float           *float64           `| @Float`
-	List            []*Value           `| "[" ((@@ ","?)* )? "]"`
 	Map             []*Field           `| "{" ((@@ ","?)* )? "}"`
+	ParsedArray     []*Value           `| "[" ((@@ ","?)* )? "]"`
 	Identifier      *string            `| @Ident @("." Ident)*`
+
+	// Here is where a sequential-number named map goes
+	FinalArray []*Value
 
 	Pos lexer.Position
 }
@@ -113,6 +121,12 @@ func checkFileError(err error, filename string) {
 	if err != nil {
 		panic(strings.Replace(err.Error(), "<source>", filename, 1))
 	}
+}
+
+var _workingDirectory string
+
+func setWorkingDirectory(workingDirectory string) {
+	_workingDirectory = workingDirectory
 }
 
 // BuildParser - Builds a new parser with GoFigureLexer as lexer
@@ -133,6 +147,10 @@ func ParseFile(filename string, parser *participle.Parser) (config FigureConfig)
 	config = FigureConfig{}
 	if parser == nil {
 		parser = BuildParser()
+	}
+
+	if _workingDirectory != "" {
+		filename = _workingDirectory + "/" + filename
 	}
 
 	// Open a handle to file
