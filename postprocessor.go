@@ -49,6 +49,16 @@ func (f *Field) getColumn() int {
 	return f.Pos.Column
 }
 
+func (v *Value) getFileName() string {
+	return v.Pos.Filename
+}
+func (v *Value) getLine() int {
+	return v.Pos.Line
+}
+func (v *Value) getColumn() int {
+	return v.Pos.Column
+}
+
 type GofigureEntry interface {
 	getFileName() string
 	getLine() int
@@ -247,7 +257,7 @@ func reverseIdentifiersInList(values []*Value, root *FigureConfig) {
 			reverseIdentifiersInList(value.ParsedArray, root)
 		} else if value.Identifier != nil {
 			identVal, err := findIdentifierInConfig(value.Identifier, root)
-			check(err)
+			checkConfigError(err, value)
 
 			values[i] = identVal
 		}

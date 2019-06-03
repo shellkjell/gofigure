@@ -30,15 +30,25 @@ func main() {
 	flag.Parse()
 
 	if inFile == "" || len(os.Args) < 2 {
-		stderr.Println("Need a file to parse as argument")
+		stderr.Println("Need a file to parse")
 		fmt.Println("usage: " + os.Args[0] + " -i inFile [-o outFile]")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	fmt.Println(os.Args[0])
-
 	cwd, err := os.Getwd()
+
+	inFileDirectoryParts := strings.Split(inFile, "/")
+
+	if len(inFileDirectoryParts) != 1 {
+		inFile = inFileDirectoryParts[len(inFileDirectoryParts)-1]
+
+		inFileDirectoryParts = inFileDirectoryParts[:len(inFileDirectoryParts)-1]
+
+		inFileDirectory := strings.Join(inFileDirectoryParts, "/")
+
+		cwd += "/" + inFileDirectory
+	}
 
 	setWorkingDirectory(cwd)
 
