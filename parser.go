@@ -20,6 +20,7 @@ var GoFigureLexer = lexer.Must(lexer.Regexp(
 		`|([#;].*$)|(/\*[.\s\n\r]*\*/)` + // Comments
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
 		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
+		`|(?P<Boolean>true|false)` +
 		`|(?P<Ident>` + re_valid_ident_part + `)` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
@@ -102,11 +103,16 @@ type UnprocessedString struct {
 	Pos lexer.Position
 }
 
+type Bool bool
+
+func (b *Bool) Capture(v []string) error { *b = v[0] == "true"; return nil }
+
 type Value struct {
 	String          *string            `@String`
 	MultilineString *UnprocessedString `| @@`
 	Integer         *int64             `| @Int`
 	Float           *float64           `| @Float`
+	Boolean         *Bool              `| (@"true" | @"false") `
 	Map             []*Field           `| "{" ((@@ ","?)* )? "}"`
 	ParsedArray     []*Value           `| "[" ((@@ ","?)* )? "]"`
 	Identifier      *string            `| @Ident @("." Ident)*`

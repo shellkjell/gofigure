@@ -4,7 +4,7 @@ name
 backgroundColor
 textColor: "#FAFAFA"
 
-![]
+[]
 
 return.0.value: 4
 return.1.value: 3

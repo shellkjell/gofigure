@@ -126,6 +126,8 @@ func (v *Value) toFinalValue() (ret interface{}) {
 		ret = v.Float
 	} else if v.Integer != nil {
 		ret = v.Integer
+	} else if v.Boolean != nil {
+		ret = v.Boolean
 	} else if v.String != nil {
 		ret = v.String
 	} else if v.MultilineString != nil {
