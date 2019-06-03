@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var stderr = log.New(os.Stderr, "", 0)
@@ -39,6 +40,12 @@ func main() {
 	path, err := filepath.Abs(inFile)
 
 	check(err)
+
+	pathParts := strings.Split(path, "/")
+
+	pathParts = pathParts[:len(pathParts)-1]
+
+	path = strings.Join(pathParts, "/")
 
 	err = os.Chdir(path)
 
