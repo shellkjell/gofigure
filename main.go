@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
+	"path/filepath"
 )
 
 var stderr = log.New(os.Stderr, "", 0)
@@ -36,23 +36,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	cwd, err := os.Getwd()
+	path, err := filepath.Abs(inFile)
 
-	inFileDirectoryParts := strings.Split(inFile, "/")
+	check(err)
 
-	if len(inFileDirectoryParts) != 1 {
-		inFile = inFileDirectoryParts[len(inFileDirectoryParts)-1]
+	err = os.Chdir(path)
 
-		inFileDirectoryParts = inFileDirectoryParts[:len(inFileDirectoryParts)-1]
-
-		inFileDirectory := strings.Join(inFileDirectoryParts, "/")
-
-		cwd += "/" + inFileDirectory
-	}
-
-	setWorkingDirectory(cwd)
-
-	inFile = strings.Replace(inFile, cwd+"/", "", 1)
+	check(err)
 
 	config := ParseFile(inFile, nil)
 
