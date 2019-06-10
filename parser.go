@@ -148,8 +148,14 @@ func BuildParser() (parser *participle.Parser) {
 	return
 }
 
+var fileCache map[string]FigureConfig
+
 // ParseFile - Parses a file with given filename and parser. If a nil argument is passed instead of a parser a new one is built
 func ParseFile(filename string, parser *participle.Parser) (config FigureConfig) {
+	if config, exists := fileCache[filename]; exists {
+		return config
+	}
+
 	config = FigureConfig{}
 	if parser == nil {
 		parser = BuildParser()
