@@ -77,9 +77,9 @@ type SectionChild struct {
 }
 
 type Field struct {
-	Key   string      `(@Ident `      // Key
-	Child *ChildField `	( "." @@`     // When a child field should be created this is where it goes
-	Value *Value      `	| ":" @@ )?)` // ? == allow empty values
+	Key   string      `( (@Ident|@String) ` // Key
+	Child *ChildField `	( "." @@`           // When a child field should be created this is where it goes
+	Value *Value      `	| ":" @@ )?)`       // ? == allow empty values
 
 	ArrayIndex *int64
 	// ArrayIndex is not populated at parse-time,
@@ -89,7 +89,7 @@ type Field struct {
 }
 
 type ChildField struct {
-	Key        string      `((@Ident ` // Key
+	Key        string      `(( (@Ident|@String) ` // Key
 	ArrayIndex *int64      `|@Int)`
 	Child      *ChildField `( "." @@`     // When a child field should be created this is where it goes
 	Value      *Value      `| ":" @@ )?)` // ? == allow empty values

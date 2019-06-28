@@ -51,7 +51,11 @@ func main() {
 
 	check(err)
 
-	config := ParseFile(inFile, nil)
+	inFilePathParts := strings.Split(inFile, "/")
+
+	inFileName := inFilePathParts[len(inFilePathParts)-1]
+
+	config := ParseFile(inFileName, nil)
 
 	mapped := config.Transform()
 

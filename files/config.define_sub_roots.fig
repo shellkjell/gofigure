@@ -1,14 +1,13 @@
 # [@] is already defined as dev,production
 [%{dev,production}]
-localhost:"10.10.10.10"
+localhost: "10.10.10.10"
 root: "root"
 
 # Defining possible sub roots for database
 [@.database.%{master,slave}]
 
 # Define host/username/password for master/slave
-# [@.database.@]
-#[@.database.@]
+[@.database.@]
 
 host: dev.localhost
 username: dev.root

@@ -6,13 +6,12 @@ value:"stringvalue"
 
 key.test:"stringvalue2"
 
-[root1.root2 root3]
+[root1.subroot root2]
 key: "test"
 
 #[@.test]
 # Simple key value config
 key: key.test
-#strKey: "Value\""
 
 # Multi-dim keys
 key2.primary: value
@@ -25,14 +24,14 @@ key3: {
 }
 
 value1: "testVal"
-value2: root1.root2.value1
+value2: root1.subroot.value1
 
 [test3]
 
 # Array
 key4: [
-    root1.root2.value1 # Get variables from other scopes
-    root3.value2
+    root1.subroot.value1 # Get variables from other scopes
+    root2.value2
     key # Look in local scope first, then in global scope
 ]
 

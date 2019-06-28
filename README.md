@@ -82,7 +82,7 @@ gofigure can be run
 # Get the latest release and download
 curl -O $(curl -s https://api.github.com/repos/techbuddyab/gofigure/releases/latest | grep 'browser_' | cut -d\" -f4)
 chmod +x ./gofigure
-mv ./gofigure /usr/bin
+mv ./gofigure /usr/local/bin
 ```
 
 #### Building
