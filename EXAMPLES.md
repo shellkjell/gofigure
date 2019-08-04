@@ -1,7 +1,7 @@
 # Examples
 In gofigure, there are a number of features designed to make your life easier.
 
-### Expansion macro
+### The expansion macro
 One of these features is the expansion macro. You can effectively expand roots as children of the root structure, or any other keymap.
 ```
 # Can use both comma and space here
@@ -30,7 +30,7 @@ objectKey: {
 
 rootKey: "rootkey"
 ```
-This effectively expands the keys `root1` and `root2` as children of `root`, and `root3` as a separate root. Then it prefixes everything in that section with those keys as parents. In JSON, it looks like this
+The fig code above effectively expands the keys `root1` and `root2` as children of `root`, and `root3` as a separate root. Then it prefixes everything in that section with those keys as parents. In JSON, it looks like this
 ```
 {
   "root": {
@@ -50,12 +50,12 @@ This effectively expands the keys `root1` and `root2` as children of `root`, and
 
 ### The @ selector
 Now, if we want to select all children of a parent we can to so by using the `@` operator. The `@` operator is a selector which selects all predefined maps at the given level.
-Say for example we wanted to add something to both root1 and root2 in the above example. We would add to the end of the file
+Say for example we wanted to add something to both root1 and root2 in the above example. We would add to the end of the file:
 ```
 [root.@]
 added: "more value"
 ```
-Both `root1` and `root2` along with any other keys (which may be) defined as children of `root`, will now contain the added value. For sake of completeness, the JSON will now look like this
+As a result, both `root1` and `root2` along with any other keys (which may be) defined as children of `root`, will now contain the added value. For sake of completeness, the JSON will now look like this
 ```
 {
   "root": {

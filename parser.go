@@ -19,7 +19,8 @@ var GoFigureLexer = lexer.Must(lexer.Regexp(
 		`(\s+)` +
 		`|([#;].*$)|(/\*[.\s\n\r]*\*/)` + // Comments
 		`|(?P<MLString>("""(?:\\.|[^(""")])*""")|('''(?:\\.|[^(''')])*'''))` +
-		`|(?P<String>("(?:\\.|[^"])*")|('(?:\\.|[^'])*'))` +
+		`|(?P<String>("(.|\\)*?")|('(.|\\)*?'))` +
+		`|(?P<Boolean>true|false)` +
 		`|(?P<Ident>` + re_valid_ident_part + `)` +
 		`|(?P<Float>-?\d+\.\d+)` +
 		`|(?P<Int>-?\d+)` +
@@ -76,9 +77,9 @@ type SectionChild struct {
 }
 
 type Field struct {
-	Key   string      `(@Ident `      // Key
-	Child *ChildField `	( "." @@`     // When a child field should be created this is where it goes
-	Value *Value      `	| ":" @@ )?)` // ? == allow empty values
+	Key   string      `( (@Ident|@String) ` // Key
+	Child *ChildField `	( "." @@`           // When a child field should be created this is where it goes
+	Value *Value      `	| ":" @@ )?)`       // ? == allow empty values
 
 	ArrayIndex *int64
 	// ArrayIndex is not populated at parse-time,
@@ -88,7 +89,7 @@ type Field struct {
 }
 
 type ChildField struct {
-	Key        string      `((@Ident ` // Key
+	Key        string      `(( (@Ident|@String) ` // Key
 	ArrayIndex *int64      `|@Int)`
 	Child      *ChildField `( "." @@`     // When a child field should be created this is where it goes
 	Value      *Value      `| ":" @@ )?)` // ? == allow empty values
@@ -102,11 +103,16 @@ type UnprocessedString struct {
 	Pos lexer.Position
 }
 
+type Bool bool
+
+func (b *Bool) Capture(v []string) error { *b = v[0] == "true"; return nil }
+
 type Value struct {
 	String          *string            `@String`
 	MultilineString *UnprocessedString `| @@`
 	Integer         *int64             `| @Int`
 	Float           *float64           `| @Float`
+	Boolean         *Bool              `| (@"true" | @"false") `
 	Map             []*Field           `| "{" ((@@ ","?)* )? "}"`
 	ParsedArray     []*Value           `| "[" ((@@ ","?)* )? "]"`
 	Identifier      *string            `| @Ident @("." Ident)*`
@@ -142,8 +148,14 @@ func BuildParser() (parser *participle.Parser) {
 	return
 }
 
+var fileCache map[string]FigureConfig
+
 // ParseFile - Parses a file with given filename and parser. If a nil argument is passed instead of a parser a new one is built
 func ParseFile(filename string, parser *participle.Parser) (config FigureConfig) {
+	if config, exists := fileCache[filename]; exists {
+		return config
+	}
+
 	config = FigureConfig{}
 	if parser == nil {
 		parser = BuildParser()

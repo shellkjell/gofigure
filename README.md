@@ -82,7 +82,7 @@ gofigure can be run
 # Get the latest release and download
 curl -O $(curl -s https://api.github.com/repos/techbuddyab/gofigure/releases/latest | grep 'browser_' | cut -d\" -f4)
 chmod +x ./gofigure
-mv ./gofigure /usr/bin
+mv ./gofigure /usr/local/bin
 ```
 
 #### Building
@@ -139,7 +139,7 @@ No `CONTRIBUTING.md` yet, but feel free to submit an issue if you have problems 
 ## Authors
 
 * **Zakay Danial** - *Idea, initial structure and mastermind* - [Zakay](https://github.com/Zakay)
-* **Stefano De Colli** - *Algorithm inspiration* - [sealos](https://github.com/sealos)
+* **Stefano De Colli** - *Counseling* - [sealos](https://github.com/sealos)
 * **Simon Haak** - *Full implementation* - [shellkjell](https://github.com/shellkjell)
 
 ## License
