@@ -6,6 +6,7 @@ import (
 
 	"github.com/alecthomas/participle"
 	"github.com/alecthomas/participle/lexer"
+	"github.com/google/uuid"
 )
 
 // A valid indentifier part is one of the following:
@@ -27,7 +28,7 @@ var GoFigureLexer = lexer.Must(lexer.Regexp(
 		`|(?P<SectionEnd>\[\])` +
 		`|(?P<Include>%include)` +
 		`|(?P<Expand>\.\.\.)` +
-		`|(?P<Special>[][{}.,:%@])`,
+		`|(?P<Special>[][{}.,:%@)(])`,
 ))
 
 // FigureConfig - Structure capable of containing a full GoFigure configuration
@@ -107,6 +108,90 @@ type Bool bool
 
 func (b *Bool) Capture(v []string) error { *b = v[0] == "true"; return nil }
 
+var generators map[uuid.UUID]*Generator
+
+// Generator - A generator function identifier defined in a python script file, takes a variadic amount of arguments inside following parenthesis
+type Generator struct {
+	Name   string     `(@Ident`
+	Params ValueArray `"(" @@* ")")`
+
+	uniqueID uuid.UUID
+}
+
+// // Capture - captures a generator call
+// func (g *Generator) Capture(v []string) error {
+// 	newID, err := uuid.NewUUID()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	g.uniqueID = newID
+// 	repr.Println(v, repr.OmitEmpty(true), repr.Indent("  "))
+
+// 	return nil
+// }
+
+// ValueArray - Standalone value struct for parser
+type ValueArray struct {
+	Values []Value `(@@ ","?)*`
+}
+
+var symbols = lexer.SymbolsByRune(GoFigureLexer)
+
+func (g *Generator) Parse(lex lexer.PeekingLexer) error {
+	token, err := lex.Peek(0)
+
+	if symbols[token.Type] != "Ident" {
+		return participle.NextMatch
+	}
+
+	lex.Next()
+	g.Name = token.Value
+
+	token, err = lex.Peek(0)
+	if token.Value != "(" {
+		return participle.NextMatch
+	}
+
+	// Discard "("
+	_, err = lex.Next()
+
+	if err != nil {
+		return err
+	}
+
+	// Setup value parser
+	parser, err := participle.Build(
+		&Value{},
+		participle.Lexer(GoFigureLexer),
+	)
+
+	values := []Value{}
+
+	for token, err = lex.Next(); err == nil && token.Value != ")"; token, err = lex.Next() {
+		if token.Value == "," {
+			continue
+		}
+
+		parseInto := Value{}
+		err = parser.ParseString(token.Value, &parseInto)
+
+		values = append(values, parseInto)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	g.Params.Values = values
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type Value struct {
 	String          *string            `@String`
 	MultilineString *UnprocessedString `| @@`
@@ -115,6 +200,7 @@ type Value struct {
 	Boolean         *Bool              `| (@"true" | @"false") `
 	Map             []*Field           `| "{" ((@@ ","?)* )? "}"`
 	ParsedArray     []*Value           `| "[" ((@@ ","?)* )? "]"`
+	Generator       *Generator         `| @@` //`| (@Ident "(" (@@ ","?)* ")")`
 	Identifier      *string            `| @Ident @("." Ident)*`
 
 	// Here is where a sequential-number named map goes
@@ -140,7 +226,7 @@ func BuildParser() (parser *participle.Parser) {
 	parser, err := participle.Build(
 		&FigureConfig{},
 		participle.Lexer(GoFigureLexer),
-		participle.Unquote("String"),
+		//participle.Unquote("String"),
 	)
 
 	check(err)

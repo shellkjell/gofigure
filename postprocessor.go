@@ -152,6 +152,8 @@ func (v *Value) toFinalValue() (ret interface{}) {
 		}
 
 		ret = nwArray
+	} else if v.Generator != nil {
+		ret = v.Generator.values()
 	} else { // Has to be empty map
 		// todo: include flag for omitting empty values?
 		ret = map[string]interface{}{}
@@ -822,17 +824,17 @@ func (c FigureConfig) parseIncludesAndAppendToConfig() (ret FigureConfig) {
 
 // This function removes leading/trailing whitespaces, string quotes etc.
 func (thisArg *UnprocessedString) transform() (final string) {
-	re_leadclose_whtsp := regexp.MustCompile(`^[\s\p{Zs}]+|[\s\p{Zs}]+$`)
-	re_leadclose_quotes := regexp.MustCompile(`^("""|''')|("""|''')$`)
-	re_inside_whtsp := regexp.MustCompile(`[\r\f\t \p{Zs}]{2,}`)
-	re_backslashes := regexp.MustCompile(`\\(?P<C>[^n])`)
-	re_newline_whtsp := regexp.MustCompile(`\n +|\n`)
+	reLeadcloseWhitespace := regexp.MustCompile(`^[\s\p{Zs}]+|[\s\p{Zs}]+$`)
+	reLeadcloseQuotes := regexp.MustCompile(`^("""|''')|("""|''')$`)
+	reInsideWhitespace := regexp.MustCompile(`[\r\f\t \p{Zs}]{2,}`)
+	reBackslashes := regexp.MustCompile(`\(?P<C>[^n])`)
+	reNewlineWhitespace := regexp.MustCompile("\n +|\n")
 
-	final = re_leadclose_whtsp.ReplaceAllString(*thisArg.String, "")
-	final = re_leadclose_quotes.ReplaceAllString(final, "")
-	final = re_inside_whtsp.ReplaceAllString(final, " ")
-	final = re_backslashes.ReplaceAllString(final, `\\$C`)
-	final = re_newline_whtsp.ReplaceAllString(final, `\\n`)
+	final = reLeadcloseWhitespace.ReplaceAllString(*thisArg.String, "")
+	final = reLeadcloseQuotes.ReplaceAllString(final, "")
+	final = reInsideWhitespace.ReplaceAllString(final, " ")
+	final = reBackslashes.ReplaceAllString(final, `\$C`)
+	final = reNewlineWhitespace.ReplaceAllString(final, "\n")
 
 	return
 }

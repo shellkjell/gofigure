@@ -21,10 +21,18 @@ func check(e error) {
 
 var outFile string
 var inFile string
+var pythonFile string
+
+var workingDirectory string
 
 func init() {
 	flag.StringVar(&outFile, "o", "", "Output filename")
 	flag.StringVar(&inFile, "i", "", "Input filename")
+	flag.StringVar(&pythonFile, "p", "", "Python generator file")
+}
+
+func printUsage() {
+	fmt.Println("usage: " + os.Args[0] + " -i inFile [-o outFile] [-p pythonFile]")
 }
 
 func main() {
@@ -32,10 +40,16 @@ func main() {
 
 	if inFile == "" || len(os.Args) < 2 {
 		stderr.Println("Need a file to parse")
-		fmt.Println("usage: " + os.Args[0] + " -i inFile [-o outFile]")
+		printUsage()
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	currentPath, err := os.Getwd()
+
+	check(err)
+
+	workingDirectory = currentPath
 
 	path, err := filepath.Abs(inFile)
 
