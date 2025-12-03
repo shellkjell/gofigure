@@ -1,47 +1,47 @@
-%include "files/config.define_roots.fig"
-%include "files/config.define_sub_roots.fig"
-%include "files/config.strings.fig"
+# Comment
+; Another comment
 
-value:"str"
-[test]
-value:""
+value: "Valuable"
 
-key.test:value
-
-[@.test]
 # Simple key value config
-key: test.value
-strKey: "Value\""
+key: value # Comment
 
 # Multi-dim keys
-key2.primary: test.value
-key2.secondary: test.value
+key2.subkey: value
 
 # Multi-dim keys v2
 key3: {
-    primary: test.value
-    secondary: test.value
+    primary: value
+    secondary: value
 }
 
-value1: "testVal"
-value2: test.test.value1
+# Multi-dim keys v3
+key4: {
+    primary: value
+    secondary: {
+        third: value
+        fourth: value
+    }
+}
 
 # Array
-key4: [
-    value1
-    test.test.value2
+key5: [
+    value
+    value
 ]
 
-key: "test"
-key: 'test'
+# Array with complex values
+key6: [
+    value
+    value
+    {
+        key1: "test"
+        key2: "test2"
+        key3: ["test3" "test4"]
+    }
+    [
+        value
+    ]
+]
 
-mlString: """test   again
-    again
-and again"""
-mlString2: '''test        again
-    again
-and again'''
-
-\"
-[]
-%include "files/config.special.fig"
+key1: {}

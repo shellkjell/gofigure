@@ -1,152 +1,190 @@
 # gofigure
 
-Package gofigure is a fully functional configuration file parser with bells on
+[![Go Reference](https://pkg.go.dev/badge/github.com/shellkjell/gofigure.svg)](https://pkg.go.dev/github.com/shellkjell/gofigure)
+[![Go Report Card](https://goreportcard.com/badge/github.com/shellkjell/gofigure)](https://goreportcard.com/report/github.com/shellkjell/gofigure)
 
-## Getting Started
+A configuration file parser that converts `.fig` files to JSON. Features include sections, expansion macros, includes, and reference resolution.
 
-Want to get started with this simpler way of configuring software?
-Good. You shall now write .fig files for all of your projects.
+## Installation
 
-## Example
-A quick example of what you can do with gofigure
+### Binary
+
+```bash
+go install github.com/shellkjell/gofigure/cmd/gofigure@latest
 ```
-value: "string" ; Comment
 
-integerKey: 42 # Comment
+### Library
 
+```bash
+go get github.com/shellkjell/gofigure/pkg/fig
+```
+
+## Usage
+
+### CLI
+
+```bash
+# Output to stdout
+gofigure -i config.fig
+
+# Pretty-print with indentation
+gofigure -i config.fig -indent
+
+# Write to file
+gofigure -i config.fig -o config.json
+
+# Show version
+gofigure -version
+```
+
+### Library
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "log"
+
+    "github.com/shellkjell/gofigure/pkg/fig"
+)
+
+func main() {
+    // Simple parsing
+    result, err := fig.ParseString(`key: "value"`)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Or parse a file
+    result, err = fig.Parse("config.fig")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // For more control, use Parser and Transformer directly
+    parser, _ := fig.NewParser()
+    config, _ := parser.ParseFile("config.fig")
+
+    transformer := fig.NewTransformer(parser)
+    mapped, _ := transformer.Transform(config)
+
+    output, _ := json.MarshalIndent(mapped, "", "  ")
+    fmt.Println(string(output))
+}
+```
+
+## Configuration Format
+
+### Basic Syntax
+
+```fig
+# Comments start with # or ;
+value: "string"
+integerKey: 42
 floatKey: 4.2
+boolKey: true
 
+# Reference another value
 keyFromIdentifier: value
 
+# Maps
 mapKey: {
   key: "string"
-  int: integerKey
-  array: [
-    "Value"
-    floatKey
-  ]
+  nested: integerKey
 }
 
-arrayKey: [
-  value
-  value
-  {
-    key1: "test"
-    key2: "test2"
-    key3: ["test3" "test4"]
-  }
-  [
-    value 
-  ]
-]
+# Arrays
+arrayKey: ["value1", "value2", 42]
 ```
 
-Should output the JSON
+### Sections
 
-```
-{
-  "arrayKey": [
-    "string", 
-    "string", 
-    {
-      "key1": "test",
-      "key2": "test2",
-      "key3": ["test3", "test4"]
-    },
-    ["string"]
-  ],
-  "floatKey": 4.2,
-  "integerKey": 42,
-  "keyFromIdentifier": "string",
-  "mapKey": {
-    "array": ["Value", 4.2],
-    "int": 42,
-    "key": "string"
-  },
-  "value": "string"
-}
+Sections provide hierarchical structure:
+
+```fig
+[server]
+  host: "localhost"
+  port: 8080
+
+[database.primary]
+  host: "db.example.com"
+  port: 5432
 ```
 
-For more advanced examples, look at the files in the [files](files) folder or check out the [EXAMPLES](EXAMPLES.md) file.
+### Expansion Macros
 
-### Prerequisites
+Generate multiple similar entries:
 
-gofigure can be run 
-* in a docker container
-* locally on your machine - requires an installation of `golang` (this implementation was written in version 1.10)
+```fig
+# Creates dev, staging, prod sections
+[%{dev,staging,prod}]
+  enabled: true
 
-### Installing
-
-#### Linux
-```
-# Get the latest release and download
-curl -O $(curl -s https://api.github.com/repos/techbuddyab/gofigure/releases/latest | grep 'browser_' | cut -d\" -f4)
-chmod +x ./gofigure
-mv ./gofigure /usr/local/bin
+# Apply to all roots with @
+[@.logging]
+  level: "info"
 ```
 
-#### Building
-```
-git clone git@github.com:techbuddyab/gofigure
-```
+### Includes
 
-Now, you can choose to build and run the software locally or with docker.
+Include other configuration files:
 
-#### Local build
-```
-# build with local go installation - binary in project root
-make build-local
-# run with example file
-make run-local
+```fig
+%include "base.fig", "overrides.fig"
 ```
 
-Upon which you will have a built binary in the project root folder.
-
-#### Docker build
-The docker way has the same end result as the local build
+## Project Structure
 
 ```
-# build in docker - binary in project root
+gofigure/
+├── cmd/
+│   └── gofigure/       # CLI application
+├── pkg/
+│   └── fig/            # Public library
+│       ├── ast.go      # AST types
+│       ├── lexer.go    # Lexer definition
+│       ├── parser.go   # Parser implementation
+│       └── transform.go # Config transformation
+├── files/              # Example config files
+└── Makefile
+```
+
+## Development
+
+```bash
+# Run tests
+make test
+
+# Run tests with verbose output
+make test-verbose
+
+# Build binary
 make build
-# run with example file
-make run
+
+# Run linters
+make lint
+
+# Format code
+make fmt
+
+# Run all checks
+make check
 ```
 
-#### After building
-Try running the software with your own .fig files.
+## Examples
 
-```
-# Print JSON to stdout
-./gofigure -i config.fig
-
-# Write JSON to file
-./gofigure -i config.fig -o config.json
-```
-
-## Running the tests
-
-Running the tests locally is easy. Just `go test` it!
+See [EXAMPLES.md](EXAMPLES.md) for more detailed examples and the [files/](files/) directory for sample configuration files.
 
 ## Built With
 
-* [participle](https://github.com/alecthomas/participle) - The parser library used
-* No other dependencies - and we aim to keep it that way.
+* [participle](https://github.com/alecthomas/participle) - Parser library
 
 ## Contributing
 
-No `CONTRIBUTING.md` yet, but feel free to submit an issue if you have problems or ideas. PRs are also welcome, please submit a short description of your work and we'll take it up together from there.
-
-## Authors
-
-* **Zakay Danial** - *Idea, initial structure and mastermind* - [Zakay](https://github.com/Zakay)
-* **Stefano De Colli** - *Counseling* - [sealos](https://github.com/sealos)
-* **Simon Haak** - *Full implementation* - [shellkjell](https://github.com/shellkjell)
+Issues and PRs are welcome. Please submit a short description of your work.
 
 ## License
 
-This project is licensed under the Apache v2.0 License - see the [LICENSE](LICENSE) file for details
-
-## Acknowledgments
-
-* Examples from the alecthomas/participle repo were helpful - A truly dead simple parser.
-
+[GNU GPLv2 License](LICENSE)
